@@ -4,7 +4,35 @@
 
 #include "CoreMinimal.h"
 #include "ProceduralMeshComponent.h"
+#include "FFTOceanRenderer.h"
 #include "ProceduralOceanComponent.generated.h"
+
+USTRUCT(BlueprintType)
+struct FOceanRenderConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 64, ClampMax = 1024))
+	int32 RenderTextureWidth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 64, ClampMax = 1024))
+	int32 RenderTextureHeight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
+	float TimeMultiply;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
+	float WaveAmplitude;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D WaveDirection;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D WindSpeed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ocean Rendering")
+	class UTexture2D* GaussianNoiseTexture;
+};
 
 /**
  *
@@ -28,6 +56,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0), Category = "Ocean Geometry")
 	float CellWidthY;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean Rendering")
+	FOceanRenderConfig RenderConfig;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ocean Rendering Debug")
+	class UTextureRenderTarget2D* TildeZeroPassDebugRenderTarget;
+
+
 public:
 
 	UProceduralOceanComponent(const FObjectInitializer& ObjectInitializer);
@@ -36,5 +71,9 @@ public:
 	void InitOceanGeometry();
 
 	virtual void OnRegister() override;
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+protected:
+
+	TUniquePtr<FFFTOceanRenderer> OceanRenderer;
 };

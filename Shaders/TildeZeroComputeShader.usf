@@ -1,0 +1,49 @@
+#include "/Engine/Private/Common.ush"
+#include "Common.ush"
+
+#define PI             3.1415926536f
+#define TWO_PI         (2.f * PI)
+#define GRAVITY        981.f         // In Unreal unit
+#define HALF_SQRT_TWO  0.7071068f
+#define SQUARE(x)      (x * x)
+
+RWTexture2D<float4> OutputTildeZeroTexture;
+Texture2D<float> InputGaussianNoiseTexture;
+
+[numthreads(32, 32, 1)]
+void ComputeTildeZero(uint3 ThreadId : SV_DispatchThreadID)
+{
+    const float L              = 1000.f;
+    const float MaxH           = 1000000.f;
+    const float Time           = TildeZeroUniform.Time;
+    const float WaveAmplitude  = TildeZeroUniform.WaveAmplitude;
+    const float2 WindSpeed     = TildeZeroUniform.WindSpeed;
+    const float2 WaveDirection = TildeZeroUniform.WaveDirection;
+    
+    float WindVelocity = length(WindSpeed);
+    float L_ = SQUARE(WindVelocity) / GRAVITY;
+    
+    float2 Pos = ThreadId.xy;
+    float2 K = TWO_PI * Pos / WindSpeed;
+    float2 Kn = normalize(K);
+    float2 KnMinus = normalize(-K);
+    float2 Wn = normalize(WindSpeed); // ?
+    
+    float MagK = max(length(K), 0.0001);
+    float K2 = SQUARE(MagK);
+    float K4 = SQUARE(K2);
+    float K2L2 = K2 * SQUARE(L_);
+    
+    float H0K      = clamp(sqrt(WaveAmplitude / K4) * pow(dot(Kn,      Wn), 4.0) * exp(-(1 / K2L2)) * exp(-K2 * pow(L / 2000, 2)) * HALF_SQRT_TWO, 0, MaxH);
+    float H0MinusK = clamp(sqrt(WaveAmplitude / K4) * pow(dot(KnMinus, Wn), 4.0) * exp(-(1 / K2L2)) * exp(-K2 * pow(L / 2000, 2)) * HALF_SQRT_TWO, 0, MaxH);
+
+    float2 NoiseTextureSize;
+    float2 OutputTextureSize;
+    InputGaussianNoiseTexture.GetDimensions(NoiseTextureSize.x, NoiseTextureSize.y);
+    OutputTildeZeroTexture.GetDimensions(OutputTextureSize.x, OutputTextureSize.y);
+    
+    int2 NoiseTexturePos = (ThreadId.xy / OutputTextureSize) * NoiseTextureSize;
+    float4 GaussianRandom = InputGaussianNoiseTexture.Load(int3(NoiseTexturePos, 0));
+    
+    OutputTildeZeroTexture[ThreadId.xy] = float4(H0K * GaussianRandom.rg, H0MinusK * GaussianRandom.ba);
+}

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Pass/TildeZeroPass.h"
 
 class FFFTOceanRenderer
 {
@@ -17,4 +18,7 @@ public:
 		class UTextureRenderTarget2D* IFFTDebugTexture = nullptr,
 		class UTextureRenderTarget2D* TwiddleDebugTexture = nullptr,
 		class UTextureRenderTarget2D* TildeZeroDebugTexture = nullptr);
+
+
+	FTildeZeroPass TildeZeroPass;
 };

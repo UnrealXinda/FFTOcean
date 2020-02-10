@@ -2,7 +2,8 @@
 
 #include "FFTOceanRenderer.h"
 
-FFFTOceanRenderer::FFFTOceanRenderer()
+FFFTOceanRenderer::FFFTOceanRenderer() :
+	TildeZeroPass()
 {
 
 }

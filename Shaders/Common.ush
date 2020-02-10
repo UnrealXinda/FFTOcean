@@ -1,0 +1,35 @@
+struct Complex
+{
+    float Re; // Real part
+    float Im; // Imaginary part
+};
+
+Complex Add(Complex C1, Complex C2)
+{
+    Complex C;
+    C.Re = C1.Re + C2.Re;
+    C.Im = C1.Im + C2.Im;
+    return C;
+}
+
+Complex Sub(Complex C1, Complex C2)
+{
+    Complex C;
+    C.Re = C1.Re - C2.Re;
+    C.Im = C1.Im - C2.Im;
+    return C;
+}
+
+Complex Mul(Complex C1, Complex C2)
+{
+    Complex C;
+    C.Re = C1.Re * C2.Re;
+    C.Im = C1.Im * C2.Im;
+    return C;
+}
+
+Complex Conj(Complex C)
+{
+    C.Im = -C.Im;
+    return C;
+}

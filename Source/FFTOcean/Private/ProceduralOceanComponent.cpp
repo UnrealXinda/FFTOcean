@@ -2,10 +2,13 @@
 
 
 #include "ProceduralOceanComponent.h"
-#include "Runtime/Core/Public/Async/ParallelFor.h"
+#include "Kismet/GameplayStatics.h"
+#include "Async/ParallelFor.h"
+#include "Pass/PassUtil.h"
 
 UProceduralOceanComponent::UProceduralOceanComponent(const FObjectInitializer& ObjectInitializer) :
-	Super(ObjectInitializer)
+	Super(ObjectInitializer),
+	OceanRenderer(new FFFTOceanRenderer)
 {
 	VertexCountX = 60;
 	VertexCountY = 60;
@@ -18,6 +21,9 @@ UProceduralOceanComponent::UProceduralOceanComponent(const FObjectInitializer& O
 
 	bTickInEditor = true;
 	bAutoActivate = true;
+
+	RenderConfig.RenderTextureWidth = 512;
+	RenderConfig.RenderTextureHeight = 512;
 }
 
 void UProceduralOceanComponent::InitOceanGeometry()
@@ -83,7 +89,21 @@ void UProceduralOceanComponent::OnRegister()
 	InitOceanGeometry();
 }
 
-void UProceduralOceanComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+void UProceduralOceanComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	FTildeZeroPassConfig Config;
+	Config.TextureWidth = RenderConfig.RenderTextureWidth;
+	Config.TextureHeight = RenderConfig.RenderTextureHeight;
+	Config.GaussianNoiseTextureRef = FFTOcean::GetRHITextureFromTexture2D(RenderConfig.GaussianNoiseTexture);
+
+	FTildeZeroPassParam Param;
+	Param.Time = UGameplayStatics::GetRealTimeSeconds(GetWorld()) * RenderConfig.TimeMultiply;
+	Param.WaveAmplitude = RenderConfig.WaveAmplitude;
+	Param.WaveDirection = RenderConfig.WaveDirection;
+	Param.WindSpeed = RenderConfig.WindSpeed;
+
+	OceanRenderer->TildeZeroPass.InitPass(Config);
+	OceanRenderer->TildeZeroPass.Render(Param, FFTOcean::GetRHITextureFromRenderTarget(TildeZeroPassDebugRenderTarget));
 }
