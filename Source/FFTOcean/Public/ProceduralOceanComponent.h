@@ -60,7 +60,7 @@ public:
 	FOceanRenderConfig RenderConfig;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ocean Rendering Debug")
-	class UTextureRenderTarget2D* TildeZeroPassDebugRenderTarget;
+	class UTextureRenderTarget2D* PhillipsFourierPassDebugRenderTarget;
 
 
 public:

@@ -23,12 +23,12 @@ public:
 	virtual ~FOceanRenderPass() { }
 
 	FOceanRenderPass(const FOceanRenderPass&) = delete;
-	FOceanRenderPass(FOceanRenderPass&&) = delete;
+	FOceanRenderPass(FOceanRenderPass&&)      = delete;
 
 	FOceanRenderPass& operator=(const FOceanRenderPass&) = delete;
-	FOceanRenderPass& operator=(FOceanRenderPass&&) = delete;
+	FOceanRenderPass& operator=(FOceanRenderPass&&)      = delete;
 
-	virtual bool IsValidPass() const = 0;
+	virtual bool IsValidPass() const     = 0;
 	virtual void ReleaseRenderResource() = 0;
 };
 

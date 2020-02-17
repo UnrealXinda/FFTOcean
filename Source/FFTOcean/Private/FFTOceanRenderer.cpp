@@ -3,7 +3,7 @@
 #include "FFTOceanRenderer.h"
 
 FFFTOceanRenderer::FFFTOceanRenderer() :
-	TildeZeroPass()
+	PhillipsFourierPass()
 {
 
 }
