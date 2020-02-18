@@ -24,10 +24,8 @@
 #include "Math/UnrealMathUtility.h"
 
 BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPhillipsFourierComputeShaderParameters, )
-	SHADER_PARAMETER(float,     Time)
 	SHADER_PARAMETER(float,     WaveAmplitude)
 	SHADER_PARAMETER(FVector2D, WindSpeed)
-	SHADER_PARAMETER(FVector2D, WaveDirection)
 END_GLOBAL_SHADER_PARAMETER_STRUCT()
 IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPhillipsFourierComputeShaderParameters, "PhillipsFourierUniform");
 
@@ -78,10 +76,10 @@ public:
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputGaussianNoiseTexture, FShaderResourceViewRHIRef());
 	}
 
-	void SetShaderParameters(FRHICommandList& RHICmdList, const FPhillipsFourierComputeShaderParameters& Parameters)
+	void SetShaderParameters(FRHICommandList& RHICmdList, const FParameters& Parameters)
 	{
 		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
-		SetUniformBufferParameterImmediate(RHICmdList, ComputeShaderRHI, GetUniformBufferParameter<FPhillipsFourierComputeShaderParameters>(), Parameters);
+		SetUniformBufferParameterImmediate(RHICmdList, ComputeShaderRHI, GetUniformBufferParameter<FParameters>(), Parameters);
 	}
 
 private:
@@ -161,7 +159,7 @@ void FPhillipsFourierPass::Render(const FPhillipsFourierPassParam& Param, FRHITe
 {
 	if (IsValidPass())
 	{
-		ENQUEUE_RENDER_COMMAND(OutputPhillipsFourierPassCommand)
+		ENQUEUE_RENDER_COMMAND(PhillipsFourierPassCommand)
 		(
 			[Param, DebugTextureRef, this](FRHICommandListImmediate& RHICmdList)
 			{
@@ -173,11 +171,9 @@ void FPhillipsFourierPass::Render(const FPhillipsFourierPassParam& Param, FRHITe
 				PhillipsFourierComputeShader->BindShaderTextures(RHICmdList, OutputPhillipsFourierTextureUAV, InputGaussianNoiseTextureSRV);
 
 				// Bind shader uniform
-				FPhillipsFourierComputeShaderParameters UniformParam;
-				UniformParam.Time = Param.Time;
+				FPhillipsFourierComputeShader::FParameters UniformParam;
 				UniformParam.WaveAmplitude = Param.WaveAmplitude;
 				UniformParam.WindSpeed = Param.WindSpeed;
-				UniformParam.WaveDirection = Param.WaveDirection;
 				PhillipsFourierComputeShader->SetShaderParameters(RHICmdList, UniformParam);
 
 				// Dispatch shader

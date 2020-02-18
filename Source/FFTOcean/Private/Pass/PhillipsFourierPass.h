@@ -13,10 +13,8 @@ struct FPhillipsFourierPassConfig
 
 struct FPhillipsFourierPassParam
 {
-	float     Time;
 	float     WaveAmplitude;
-	FVector2D WindSpeed;      // Tilde W * v
-	FVector2D WaveDirection;  // Tilde K * k
+	FVector2D WindSpeed;
 };
 
 class FPhillipsFourierPass final : public FOceanRenderPass

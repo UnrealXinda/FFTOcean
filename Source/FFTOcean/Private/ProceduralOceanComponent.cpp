@@ -93,17 +93,6 @@ void UProceduralOceanComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	FPhillipsFourierPassConfig Config;
-	Config.TextureWidth = RenderConfig.RenderTextureWidth;
-	Config.TextureHeight = RenderConfig.RenderTextureHeight;
-	Config.GaussianNoiseTextureRef = FFTOcean::GetRHITextureFromTexture2D(RenderConfig.GaussianNoiseTexture);
-
-	FPhillipsFourierPassParam Param;
-	Param.Time = UGameplayStatics::GetRealTimeSeconds(GetWorld()) * RenderConfig.TimeMultiply;
-	Param.WaveAmplitude = RenderConfig.WaveAmplitude;
-	Param.WaveDirection = RenderConfig.WaveDirection;
-	Param.WindSpeed = RenderConfig.WindSpeed;
-
-	OceanRenderer->PhillipsFourierPass.ConfigurePass(Config);
-	OceanRenderer->PhillipsFourierPass.Render(Param, FFTOcean::GetRHITextureFromRenderTarget(PhillipsFourierPassDebugRenderTarget));
+	float Timestamp = UGameplayStatics::GetRealTimeSeconds(GetWorld()) * RenderConfig.TimeMultiply;
+	OceanRenderer->Render(Timestamp, RenderConfig, DebugConfig);
 }

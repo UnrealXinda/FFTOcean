@@ -1,3 +1,9 @@
+#define PI             3.1415926536
+#define TWO_PI         (2.0 * PI)
+#define GRAVITY        981         // In Unreal unit
+#define HALF_SQRT_TWO  0.7071068
+#define SQUARE(x)      (x * x)
+
 #define DECLARE_TEXTURE_SIZE_WITH_NAME(Texture, TextureSize)  \
     float2 TextureSize; Texture.GetDimensions(TextureSize.x, TextureSize.y);
 
@@ -8,6 +14,22 @@ struct Complex
     float Re; // Real part
     float Im; // Imaginary part
 };
+
+Complex MakeComplex(float2 Value)
+{
+    Complex Result;
+    Result.Re = Value.x;
+    Result.Im = Value.y;
+    return Result;
+}
+
+Complex MakeComplex(float Re, float Im)
+{
+    Complex Result;
+    Result.Re = Re;
+    Result.Im = Im;
+    return Result;
+}
 
 Complex Add(Complex C1, Complex C2)
 {

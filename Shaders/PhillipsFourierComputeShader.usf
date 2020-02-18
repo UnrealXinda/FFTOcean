@@ -1,12 +1,6 @@
 #include "/Engine/Private/Common.ush"
 #include "Common.ush"
 
-#define PI             3.1415926536
-#define TWO_PI         (2.0 * PI)
-#define GRAVITY        981         // In Unreal unit
-#define HALF_SQRT_TWO  0.7071068
-#define SQUARE(x)      (x * x)
-
 RWTexture2D<float4> OutputPhillipsFourierTexture;
 Texture2D<float4> InputGaussianNoiseTexture;
 
@@ -16,25 +10,22 @@ void ComputePhillipsFourier(uint3 ThreadId : SV_DispatchThreadID)
     const float L = 1000.0;
     const float MinH = -4000.0;
     const float MaxH = 4000.0;
-    const float Time = PhillipsFourierUniform.Time;
     const float WaveAmplitude = PhillipsFourierUniform.WaveAmplitude;
     const float2 WindSpeed = PhillipsFourierUniform.WindSpeed;
-    const float2 WaveDirection = PhillipsFourierUniform.WaveDirection;
     
-    DECLARE_TEXTURE_SIZE(InputGaussianNoiseTexture)
-    DECLARE_TEXTURE_SIZE(OutputPhillipsFourierTexture)
+    DECLARE_TEXTURE_SIZE_WITH_NAME(InputGaussianNoiseTexture, NoiseTextureSize)
+    DECLARE_TEXTURE_SIZE_WITH_NAME(OutputPhillipsFourierTexture, FourierTextureSize)
     
-    InputGaussianNoiseTexture.GetDimensions(InputGaussianNoiseTextureSize.x, InputGaussianNoiseTextureSize.y);
-    OutputPhillipsFourierTexture.GetDimensions(OutputPhillipsFourierTextureSize.x, OutputPhillipsFourierTextureSize.y);
+    InputGaussianNoiseTexture.GetDimensions(NoiseTextureSize.x, NoiseTextureSize.y);
+    OutputPhillipsFourierTexture.GetDimensions(FourierTextureSize.x, FourierTextureSize.y);
     
     float WindVelocity = length(WindSpeed);
     float2 WindDirection = normalize(WindSpeed);
     float L_ = SQUARE(WindVelocity) / GRAVITY;
     
-    float2 K = TWO_PI * (ThreadId.xy - OutputPhillipsFourierTextureSize / 2) / L;
+    float2 K = TWO_PI * (ThreadId.xy - FourierTextureSize / 2) / L;
     float2 Kn = normalize(K);
     float2 KnMinus = normalize(-K);
-    float2 Wn = normalize(WaveDirection);
     
     float K2 = max(dot(K, K), 0.0001);
     float K4 = SQUARE(K2);
@@ -46,7 +37,7 @@ void ComputePhillipsFourier(uint3 ThreadId : SV_DispatchThreadID)
     float H0K      = clamp(sqrt((WaveAmplitude / K4) * SQUARE(KnDotW)      * exp(-1 / K2L2) * exp(-K2 * SQUARE(L / 2000))) * HALF_SQRT_TWO, MinH, MaxH);
     float H0MinusK = clamp(sqrt((WaveAmplitude / K4) * SQUARE(KnMinusDotW) * exp(-1 / K2L2) * exp(-K2 * SQUARE(L / 2000))) * HALF_SQRT_TWO, MinH, MaxH);
     
-    int2 NoiseTexturePos = (ThreadId.xy / OutputPhillipsFourierTextureSize) * InputGaussianNoiseTextureSize;
+    int2 NoiseTexturePos = (ThreadId.xy / FourierTextureSize) * NoiseTextureSize;
     float4 GaussianRandom = InputGaussianNoiseTexture.Load(int3(NoiseTexturePos, 0));
     
     OutputPhillipsFourierTexture[ThreadId.xy] = float4(H0K * GaussianRandom.rg, H0MinusK * GaussianRandom.ba);

@@ -4,21 +4,63 @@
 
 #include "CoreMinimal.h"
 #include "Pass/PhillipsFourierPass.h"
+#include "Pass/FourierComponentPass.h"
+#include "FFTOceanRenderer.generated.h"
 
-class FFFTOceanRenderer
+USTRUCT(BlueprintType)
+struct FOceanRenderConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 64, ClampMax = 1024))
+	int32 RenderTextureWidth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 64, ClampMax = 1024))
+	int32 RenderTextureHeight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
+	float TimeMultiply;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
+	float WaveAmplitude;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D WindSpeed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ocean Rendering")
+	class UTexture2D* GaussianNoiseTexture;
+};
+
+
+USTRUCT(BlueprintType)
+struct FOceanDebugConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* PhillipsFourierPassDebugTexture;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* SurfaceDebugTextureX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* SurfaceDebugTextureY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* SurfaceDebugTextureZ;
+};
+
+class FFFTOceanRenderer final
 {
 public:
 
 	FFFTOceanRenderer();
 	~FFFTOceanRenderer();
 
-	void Render(
-		class UTextureRenderTarget2D* DisplacementMapTexture,
-		class UTextureRenderTarget2D* NormalMapTexture,
-		class UTextureRenderTarget2D* IFFTDebugTexture = nullptr,
-		class UTextureRenderTarget2D* TwiddleDebugTexture = nullptr,
-		class UTextureRenderTarget2D* PhillipsFourierPassDebugTexture = nullptr);
+	void Render(float Timestamp, const FOceanRenderConfig& Config, const FOceanDebugConfig& DebugConfig);
 
+private:
 
-	FPhillipsFourierPass PhillipsFourierPass;
+	FPhillipsFourierPass  PhillipsFourierPass;
+	FFourierComponentPass FourierComponentPass;
 };
