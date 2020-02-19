@@ -26,8 +26,12 @@ public:
 	virtual bool IsValidPass() const override;
 	virtual void ReleaseRenderResource() override;
 
-	void ConfigurePass(const FFourierComponentPassConfig& InConfig);
-	void Render(const FFourierComponentPassParam& Param, FRHITexture* XDebugTextureRef, FRHITexture* YDebugTextureRef, FRHITexture* ZDebugTextureRef);
+	void Render(
+		const FFourierComponentPassConfig& InConfig,
+		const FFourierComponentPassParam& Param,
+		FRHITexture* XDebugTextureRef,
+		FRHITexture* YDebugTextureRef,
+		FRHITexture* ZDebugTextureRef);
 
 private:
 
@@ -36,4 +40,6 @@ private:
 	FUnorderedAccessViewRHIRef  OutputSurfaceTexturesUAV[3];
 
 	FFourierComponentPassConfig Config;
+
+	void ConfigurePass(const FFourierComponentPassConfig& InConfig);
 };

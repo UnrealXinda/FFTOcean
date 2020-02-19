@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Pass/PhillipsFourierPass.h"
 #include "Pass/FourierComponentPass.h"
+#include "Pass/TwiddleFactorsPass.h"
 #include "FFTOceanRenderer.generated.h"
 
 USTRUCT(BlueprintType)
@@ -26,9 +27,6 @@ struct FOceanRenderConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector2D WindSpeed;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ocean Rendering")
-	class UTexture2D* GaussianNoiseTexture;
 };
 
 
@@ -48,6 +46,9 @@ struct FOceanDebugConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	class UTextureRenderTarget2D* SurfaceDebugTextureZ;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* TwiddleFactorsDebugTexture;
 };
 
 class FFFTOceanRenderer final
@@ -63,4 +64,5 @@ private:
 
 	FPhillipsFourierPass  PhillipsFourierPass;
 	FFourierComponentPass FourierComponentPass;
+	FTwiddleFactorsPass   TwiddleFactorsPass;
 };

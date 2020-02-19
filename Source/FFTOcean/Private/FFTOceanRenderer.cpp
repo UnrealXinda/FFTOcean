@@ -21,7 +21,6 @@ void FFFTOceanRenderer::Render(float Timestamp, const FOceanRenderConfig& Config
 		FPhillipsFourierPassConfig PassConfig;
 		PassConfig.TextureWidth = Config.RenderTextureWidth;
 		PassConfig.TextureHeight = Config.RenderTextureHeight;
-		PassConfig.GaussianNoiseTextureRef = FFTOcean::GetRHITextureFromTexture2D(Config.GaussianNoiseTexture);
 
 		FPhillipsFourierPassParam Param;
 		Param.WaveAmplitude = Config.WaveAmplitude;
@@ -29,8 +28,7 @@ void FFFTOceanRenderer::Render(float Timestamp, const FOceanRenderConfig& Config
 
 		FRHITexture* DebugTexture = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.PhillipsFourierPassDebugTexture);
 
-		PhillipsFourierPass.ConfigurePass(PassConfig);
-		PhillipsFourierPass.Render(Param, DebugTexture);
+		PhillipsFourierPass.Render(PassConfig, Param, DebugTexture);
 	};
 
 	auto RenderFourierComponentPass = [Timestamp, &Config, &DebugConfig, this]()
@@ -47,10 +45,23 @@ void FFFTOceanRenderer::Render(float Timestamp, const FOceanRenderConfig& Config
 		FRHITexture* DebugTextureY = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.SurfaceDebugTextureY);
 		FRHITexture* DebugTextureZ = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.SurfaceDebugTextureZ);
 
-		FourierComponentPass.ConfigurePass(PassConfig);
-		FourierComponentPass.Render(Param, DebugTextureX, DebugTextureY, DebugTextureZ);
+		FourierComponentPass.Render(PassConfig, Param, DebugTextureX, DebugTextureY, DebugTextureZ);
+	};
+
+	auto RenderTwiddleFactorsPass = [&Config, &DebugConfig, this]()
+	{
+		FTwiddleFactorsPassConfig PassConfig;
+		PassConfig.TextureWidth = Config.RenderTextureWidth;
+		PassConfig.TextureHeight = Config.RenderTextureHeight;
+
+		FTwiddleFactorsPassParam Param;
+
+		FRHITexture* DebugTexture = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.TwiddleFactorsDebugTexture);
+
+		TwiddleFactorsPass.Render(PassConfig, Param, DebugTexture);
 	};
 
 	RenderPhillipsFourierPass();
 	RenderFourierComponentPass();
+	RenderTwiddleFactorsPass();
 }

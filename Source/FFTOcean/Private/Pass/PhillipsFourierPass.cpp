@@ -40,7 +40,6 @@ public:
 		: FGlobalShader(Initializer)
 	{
 		OutputPhillipsFourierTexture.Bind(Initializer.ParameterMap, TEXT("OutputPhillipsFourierTexture"));
-		InputGaussianNoiseTexture.Bind(Initializer.ParameterMap, TEXT("InputGaussianNoiseTexture"));
 	}
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -56,16 +55,15 @@ public:
 	virtual bool Serialize(FArchive& Ar) override
 	{
 		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << OutputPhillipsFourierTexture << InputGaussianNoiseTexture;
+		Ar << OutputPhillipsFourierTexture;
 		return bShaderHasOutdatedParameters;
 	}
 
-	void BindShaderTextures(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef OutputTextureUAV, FShaderResourceViewRHIRef InputTextureSRV)
+	void BindShaderTextures(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef OutputTextureUAV)
 	{
 		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
 
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputPhillipsFourierTexture, OutputTextureUAV);
-		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputGaussianNoiseTexture, InputTextureSRV);
 	}
 
 	void UnbindShaderTextures(FRHICommandList& RHICmdList)
@@ -73,7 +71,6 @@ public:
 		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
 
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputPhillipsFourierTexture, FUnorderedAccessViewRHIRef());
-		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputGaussianNoiseTexture, FShaderResourceViewRHIRef());
 	}
 
 	void SetShaderParameters(FRHICommandList& RHICmdList, const FParameters& Parameters)
@@ -85,7 +82,6 @@ public:
 private:
 
 	FShaderResourceParameter OutputPhillipsFourierTexture;
-	FShaderResourceParameter InputGaussianNoiseTexture;
 };
 
 IMPLEMENT_SHADER_TYPE(, FPhillipsFourierComputeShader, TEXT("/Plugin/FFTOcean/PhillipsFourierComputeShader.usf"), TEXT("ComputePhillipsFourier"), SF_Compute);
@@ -114,8 +110,6 @@ bool FPhillipsFourierPass::IsValidPass() const
 	bool bValid = !!OutputPhillipsFourierTexture;
 	bValid &= !!OutputPhillipsFourierTextureUAV;
 	bValid &= !!OutputPhillipsFourierTextureSRV;
-	bValid &= !!InputGaussianNoiseTexture;
-	bValid &= !!InputGaussianNoiseTextureSRV;
 
 	return bValid;
 }
@@ -125,38 +119,31 @@ void FPhillipsFourierPass::ReleaseRenderResource()
 	SafeReleaseTextureResource(OutputPhillipsFourierTexture);
 	SafeReleaseTextureResource(OutputPhillipsFourierTextureUAV);
 	SafeReleaseTextureResource(OutputPhillipsFourierTextureSRV);
-	SafeReleaseTextureResource(InputGaussianNoiseTextureSRV);
-
-	// Don't release InputGaussianNoiseTexture since it's not created by the pass
 }
 
 void FPhillipsFourierPass::ConfigurePass(const FPhillipsFourierPassConfig& InConfig)
 {
-	if (Config != InConfig)
-	{
-		// Always release current resource before creating new render resources
-		ReleaseRenderResource();
-
-		Config = InConfig;
-
-		FRHIResourceCreateInfo CreateInfo;
-		uint32 TextureWidth = InConfig.TextureWidth;
-		uint32 TextureHeight = InConfig.TextureHeight;
-
-		OutputPhillipsFourierTexture = RHICreateTexture2D(TextureWidth, TextureHeight, PF_FloatRGBA, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
-		OutputPhillipsFourierTextureUAV = RHICreateUnorderedAccessView(OutputPhillipsFourierTexture);
-		OutputPhillipsFourierTextureSRV = RHICreateShaderResourceView(OutputPhillipsFourierTexture, 0);
-
-		if (InConfig.GaussianNoiseTextureRef)
-		{
-			InputGaussianNoiseTexture = StaticCast<FRHITexture2D*>(InConfig.GaussianNoiseTextureRef);
-			InputGaussianNoiseTextureSRV = RHICreateShaderResourceView(InputGaussianNoiseTexture, 0);
-		}
-	}
+	// Always release current resource before creating new render resources
+	ReleaseRenderResource();
+	
+	Config = InConfig;
+	
+	FRHIResourceCreateInfo CreateInfo;
+	uint32 TextureWidth = InConfig.TextureWidth;
+	uint32 TextureHeight = InConfig.TextureHeight;
+	
+	OutputPhillipsFourierTexture = RHICreateTexture2D(TextureWidth, TextureHeight, PF_FloatRGBA, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
+	OutputPhillipsFourierTextureUAV = RHICreateUnorderedAccessView(OutputPhillipsFourierTexture);
+	OutputPhillipsFourierTextureSRV = RHICreateShaderResourceView(OutputPhillipsFourierTexture, 0);
 }
 
-void FPhillipsFourierPass::Render(const FPhillipsFourierPassParam& Param, FRHITexture* DebugTextureRef)
+void FPhillipsFourierPass::Render(const FPhillipsFourierPassConfig& InConfig, const FPhillipsFourierPassParam& Param, FRHITexture* DebugTextureRef)
 {
+	if (Config != InConfig)
+	{
+		ConfigurePass(InConfig);
+	}
+
 	if (IsValidPass())
 	{
 		ENQUEUE_RENDER_COMMAND(PhillipsFourierPassCommand)
@@ -165,10 +152,11 @@ void FPhillipsFourierPass::Render(const FPhillipsFourierPassParam& Param, FRHITe
 			{
 				check(IsInRenderingThread());
 
-				// Bind shader textures
 				TShaderMapRef<FPhillipsFourierComputeShader> PhillipsFourierComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 				RHICmdList.SetComputeShader(PhillipsFourierComputeShader->GetComputeShader());
-				PhillipsFourierComputeShader->BindShaderTextures(RHICmdList, OutputPhillipsFourierTextureUAV, InputGaussianNoiseTextureSRV);
+
+				// Bind shader textures
+				PhillipsFourierComputeShader->BindShaderTextures(RHICmdList, OutputPhillipsFourierTextureUAV);
 
 				// Bind shader uniform
 				FPhillipsFourierComputeShader::FParameters UniformParam;

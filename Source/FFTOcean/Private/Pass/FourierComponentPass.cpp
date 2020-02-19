@@ -165,28 +165,35 @@ void FFourierComponentPass::ReleaseRenderResource()
 
 void FFourierComponentPass::ConfigurePass(const FFourierComponentPassConfig& InConfig)
 {
-	if (Config != InConfig)
+	// Always release current resource before creating new render resources
+	ReleaseRenderResource();
+	
+	Config = InConfig;
+	
+	FRHIResourceCreateInfo CreateInfo;
+	uint32 TextureWidth = InConfig.TextureWidth;
+	uint32 TextureHeight = InConfig.TextureHeight;
+	
+	for (int32 Index = 0; Index < 3; ++Index)
 	{
-		// Always release current resource before creating new render resources
-		ReleaseRenderResource();
-
-		Config = InConfig;
-
-		FRHIResourceCreateInfo CreateInfo;
-		uint32 TextureWidth = InConfig.TextureWidth;
-		uint32 TextureHeight = InConfig.TextureHeight;
-
-		for (int32 Index = 0; Index < 3; ++Index)
-		{
-			OutputSurfaceTextures[Index] = RHICreateTexture2D(TextureWidth, TextureHeight, PF_G32R32F, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
-			OutputSurfaceTexturesSRV[Index] = RHICreateShaderResourceView(OutputSurfaceTextures[Index], 0);
-			OutputSurfaceTexturesUAV[Index] = RHICreateUnorderedAccessView(OutputSurfaceTextures[Index]);
-		}
+		OutputSurfaceTextures[Index] = RHICreateTexture2D(TextureWidth, TextureHeight, PF_G32R32F, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
+		OutputSurfaceTexturesSRV[Index] = RHICreateShaderResourceView(OutputSurfaceTextures[Index], 0);
+		OutputSurfaceTexturesUAV[Index] = RHICreateUnorderedAccessView(OutputSurfaceTextures[Index]);
 	}
 }
 
-void FFourierComponentPass::Render(const FFourierComponentPassParam& Param, FRHITexture* XDebugTextureRef, FRHITexture* YDebugTextureRef, FRHITexture* ZDebugTextureRef)
+void FFourierComponentPass::Render(
+	const FFourierComponentPassConfig& InConfig,
+	const FFourierComponentPassParam& Param,
+	FRHITexture* XDebugTextureRef,
+	FRHITexture* YDebugTextureRef,
+	FRHITexture* ZDebugTextureRef)
 {
+	if (Config != InConfig)
+	{
+		ConfigurePass(InConfig);
+	}
+
 	if (IsValidPass())
 	{
 		ENQUEUE_RENDER_COMMAND(FourierComponentPassCommand)
@@ -195,9 +202,10 @@ void FFourierComponentPass::Render(const FFourierComponentPassParam& Param, FRHI
 			{
 				check(IsInRenderingThread());
 
-				// Bind shader textures
 				TShaderMapRef<FFourierComponentComputeShader> FourierComponentComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 				RHICmdList.SetComputeShader(FourierComponentComputeShader->GetComputeShader());
+
+				// Bind shader textures
 				FourierComponentComputeShader->BindShaderTextures(
 					RHICmdList,
 					OutputSurfaceTexturesUAV[0],

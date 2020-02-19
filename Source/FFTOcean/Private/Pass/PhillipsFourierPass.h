@@ -8,7 +8,6 @@ struct FPhillipsFourierPassConfig
 {
 	uint32       TextureWidth;
 	uint32       TextureHeight;
-	FRHITexture* GaussianNoiseTextureRef;
 };
 
 struct FPhillipsFourierPassParam
@@ -27,8 +26,7 @@ public:
 	virtual bool IsValidPass() const override;
 	virtual void ReleaseRenderResource() override;
 
-	void ConfigurePass(const FPhillipsFourierPassConfig& InConfig);
-	void Render(const FPhillipsFourierPassParam& Param, FRHITexture* DebugTextureRef);
+	void Render(const FPhillipsFourierPassConfig& InConfig, const FPhillipsFourierPassParam& Param, FRHITexture* DebugTextureRef);
 
 	FORCEINLINE FShaderResourceViewRHIRef GetPhillipsFourierTextureSRV() const
 	{
@@ -41,8 +39,7 @@ private:
 	FUnorderedAccessViewRHIRef OutputPhillipsFourierTextureUAV;
 	FShaderResourceViewRHIRef  OutputPhillipsFourierTextureSRV;
 
-	FTexture2DRHIRef           InputGaussianNoiseTexture;
-	FShaderResourceViewRHIRef  InputGaussianNoiseTextureSRV;
-
 	FPhillipsFourierPassConfig Config;
+
+	void ConfigurePass(const FPhillipsFourierPassConfig& InConfig);
 };

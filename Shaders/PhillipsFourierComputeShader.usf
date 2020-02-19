@@ -1,8 +1,21 @@
 #include "/Engine/Private/Common.ush"
 #include "Common.ush"
 
+// From https://www.shadertoy.com/view/4t2SDh
+// Uniformly distributed, normalized rand, [0, 1)
+float NormalizedRand(float2 UV)
+{
+    return frac(sin(dot(UV.xy, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+float GaussianRand(float2 UV, float Offset)
+{
+    float NormalizedRand1 = NormalizedRand(UV + 0.07 * frac(Offset * 2.42385));
+    float NormalizedRand2 = NormalizedRand(UV + 0.11 * frac(Offset * 0.84381 + 0.573953));
+    return 0.23 * sqrt(-log(NormalizedRand1 + 0.00001)) * cos(TWO_PI * NormalizedRand2) + 0.5;
+}
+
 RWTexture2D<float4> OutputPhillipsFourierTexture;
-Texture2D<float4> InputGaussianNoiseTexture;
 
 [numthreads(32, 32, 1)]
 void ComputePhillipsFourier(uint3 ThreadId : SV_DispatchThreadID)
@@ -13,10 +26,7 @@ void ComputePhillipsFourier(uint3 ThreadId : SV_DispatchThreadID)
     const float WaveAmplitude = PhillipsFourierUniform.WaveAmplitude;
     const float2 WindSpeed = PhillipsFourierUniform.WindSpeed;
     
-    DECLARE_TEXTURE_SIZE_WITH_NAME(InputGaussianNoiseTexture, NoiseTextureSize)
-    DECLARE_TEXTURE_SIZE_WITH_NAME(OutputPhillipsFourierTexture, FourierTextureSize)
-    
-    InputGaussianNoiseTexture.GetDimensions(NoiseTextureSize.x, NoiseTextureSize.y);
+    DECLARE_TEXTURE_SIZE_WITH_NAME(OutputPhillipsFourierTexture, FourierTextureSize)    
     OutputPhillipsFourierTexture.GetDimensions(FourierTextureSize.x, FourierTextureSize.y);
     
     float WindVelocity = length(WindSpeed);
@@ -37,8 +47,9 @@ void ComputePhillipsFourier(uint3 ThreadId : SV_DispatchThreadID)
     float H0K      = clamp(sqrt((WaveAmplitude / K4) * SQUARE(KnDotW)      * exp(-1 / K2L2) * exp(-K2 * SQUARE(L / 2000))) * HALF_SQRT_TWO, MinH, MaxH);
     float H0MinusK = clamp(sqrt((WaveAmplitude / K4) * SQUARE(KnMinusDotW) * exp(-1 / K2L2) * exp(-K2 * SQUARE(L / 2000))) * HALF_SQRT_TWO, MinH, MaxH);
     
-    int2 NoiseTexturePos = (ThreadId.xy / FourierTextureSize) * NoiseTextureSize;
-    float4 GaussianRandom = InputGaussianNoiseTexture.Load(int3(NoiseTexturePos, 0));
+    float2 UV = ThreadId.xy / FourierTextureSize;
+    float4 GaussianRandom = float4(GaussianRand(UV, 0), GaussianRand(UV, 1), GaussianRand(UV, 2), GaussianRand(UV, 3));
     
     OutputPhillipsFourierTexture[ThreadId.xy] = float4(H0K * GaussianRandom.rg, H0MinusK * GaussianRandom.ba);
+
 }
