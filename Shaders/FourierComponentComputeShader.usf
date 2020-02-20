@@ -34,11 +34,11 @@ void ComputeFourierComponent(uint3 ThreadId : SV_DispatchThreadID)
     Complex HKt_dz = Add(Mul(H0K, ExpOmegaTime), Mul(H0MinusK, ExpOmegaTimeInv));
     
     // dx: Forward displacement
-    Complex dx = MakeComplex(0.0, -K.x / KNorm);
+    Complex dx = MakeComplex(K.x / KNorm, -K.x / KNorm);
     Complex HKt_dx = Mul(HKt_dz, dx);
     
     // dy: Right displacement
-    Complex dy = MakeComplex(0.0, -K.y / KNorm);
+    Complex dy = MakeComplex(K.y / KNorm, -K.y / KNorm);
     Complex HKt_dy = Mul(HKt_dz, dy);
     
     OutputSurfaceTextureX[ThreadId.xy] = float2(HKt_dx.Re, HKt_dx.Im);

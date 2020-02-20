@@ -6,6 +6,8 @@
 #include "Pass/PhillipsFourierPass.h"
 #include "Pass/FourierComponentPass.h"
 #include "Pass/TwiddleFactorsPass.h"
+#include "Pass/InverseTransformPass.h"
+
 #include "FFTOceanRenderer.generated.h"
 
 USTRUCT(BlueprintType)
@@ -27,6 +29,15 @@ struct FOceanRenderConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector2D WindSpeed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* DisplacementMapX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* DisplacementMapY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* DisplacementMapZ;
 };
 
 
@@ -62,7 +73,8 @@ public:
 
 private:
 
-	FPhillipsFourierPass  PhillipsFourierPass;
-	FFourierComponentPass FourierComponentPass;
-	FTwiddleFactorsPass   TwiddleFactorsPass;
+	TUniquePtr<FPhillipsFourierPass>  PhillipsFourierPass;
+	TUniquePtr<FFourierComponentPass> FourierComponentPass;
+	TUniquePtr<FTwiddleFactorsPass>   TwiddleFactorsPass;
+	TUniquePtr<FInverseTransformPass> InverseTransformPass;
 };

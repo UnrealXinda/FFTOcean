@@ -12,8 +12,6 @@ struct FTwiddleFactorsPassConfig
 
 struct FTwiddleFactorsPassParam
 {
-	float     WaveAmplitude;
-	FVector2D WindSpeed;
 };
 
 class FTwiddleFactorsPass final : public FOceanRenderPass

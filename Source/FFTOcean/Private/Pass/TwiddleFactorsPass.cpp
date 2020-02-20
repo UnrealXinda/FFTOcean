@@ -118,6 +118,12 @@ namespace
 	{
 		return (Value << Bits) | (Value >> (32 - Bits));
 	}
+
+	// Reverse bits on uint32 value on the lower N bits
+	FORCEINLINE uint32 ReverseBits(uint32 Value, uint32 Bits)
+	{
+		return RotateLeft(ReverseBits(Value), Bits);
+	}
 }
 
 FTwiddleFactorsPass::FTwiddleFactorsPass()
@@ -167,7 +173,7 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 	if (Config != InConfig)
 	{
 		ConfigurePass(InConfig);
-
+	
 		if (IsValidPass())
 		{
 			ENQUEUE_RENDER_COMMAND(TwiddleFactorsPassCommand)
@@ -181,11 +187,11 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 					TResourceArray<uint32> IndicesArray;
 					IndicesArray.AddUninitialized(N);
 
-					const uint32 Bits = (uint32)FMath::Log2(N);
+					const uint32 Bits = StaticCast<uint32>(FMath::Log2(N));
 
 					for (int32 Index = 0; Index < N; ++Index)
 					{
-						IndicesArray[Index] = RotateLeft(ReverseBits(Index), Bits);
+						IndicesArray[Index] = ReverseBits(Index, Bits);
 					}
 
 					FRHIResourceCreateInfo CreateInfo(&IndicesArray);

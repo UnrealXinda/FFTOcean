@@ -11,26 +11,29 @@ void ComputeTwiddleFactors(uint3 ThreadId : SV_DispatchThreadID, uint3 GroupId :
     
     const int N = TextureSize.y;
     
-    float K = fmod(ThreadId.y * (N / pow(2, GroupId.x + 1)), N);
+    int X = GroupId.x + 1; // Starting index on twiddle is 1
+    int Y = ThreadId.y;
+    
+    float K = fmod(Y * N / pow(2, X + 1), N);
     float Sin, Cos;
     sincos(TWO_PI * K / N, Sin, Cos);
     
-    Complex Twiddle = MakeComplex(Sin, Cos);	
-    int ButterflyWing = fmod(ThreadId.y, pow(2, GroupId.x + 1)) < pow(2, GroupId.x) ? 1 : 0;
+    Complex Twiddle = MakeComplex(Cos, Sin);	
+    int ButterflyWing = fmod(Y, pow(2, X + 1)) < pow(2, X); // 1 for top, 0 for bottom
 
     [Branch]
-    if (ThreadId.x == 0)
+    if (GroupId.x == 0)
     {
-        int IndexA = ThreadId.y - ButterflyWing - 1;
-        int IndexB = ThreadId.y + ButterflyWing;
+        int IndexA = Y + ButterflyWing - 1;
+        int IndexB = Y + ButterflyWing;
         OutputTwiddleFactorsTexture[ThreadId.xy] = float4(Twiddle.Re, Twiddle.Im, InputTwiddleIndicesBuffer[IndexA], InputTwiddleIndicesBuffer[IndexB]);
     }
     
     else
     {
-        int ButterflySpan = pow(2, GroupId.x);
-        int IndexA = ThreadId.y - ButterflySpan * ButterflyWing - 1;
-        int IndexB = ThreadId.y + ButterflySpan * ButterflyWing;
+        int ButterflySpan = pow(2, X);
+        int IndexA = Y + ButterflySpan * ButterflyWing - 1;
+        int IndexB = Y + ButterflySpan * ButterflyWing;
         OutputTwiddleFactorsTexture[ThreadId.xy] = float4(Twiddle.Re, Twiddle.Im, InputTwiddleIndicesBuffer[IndexA], InputTwiddleIndicesBuffer[IndexB]);
     }
 }

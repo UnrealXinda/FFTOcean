@@ -1,0 +1,27 @@
+#include "/Engine/Private/Common.ush"
+#include "Common.ush"
+
+RWTexture2D<float4> OutputInverseTransformTexture;
+Texture2D<float4> InputTwiddleFactorsTexture;
+Texture2D<float4> InputFourierComponentTexture;
+
+[numthreads(32, 32, 1)]
+void ComputeInverseTransform(uint3 ThreadId : SV_DispatchThreadID)
+{
+    DECLARE_TEXTURE_SIZE_WITH_NAME(InputTwiddleFactorsTexture, TwiddleFactorsSize);
+    
+    const int Stage      = InverseTransformUniform.Stage;
+    const int StageCount = InverseTransformUniform.StageCount;
+    
+    float SamplePosX = Stage / StageCount * TwiddleFactorsSize.x;
+    float4 TwiddleFactor = InputTwiddleFactorsTexture.Load(int3(SamplePosX, ThreadId.y, 0));
+    float2 P = InputFourierComponentTexture.Load(int3(ThreadId.x, TwiddleFactor.z, 0)).xy;
+    float2 Q = InputFourierComponentTexture.Load(int3(ThreadId.x, TwiddleFactor.w, 0)).xy;
+    float2 W = TwiddleFactor.xy;
+    
+    //Butterfly operation
+    Complex H = Add(MakeComplex(P), Mul(MakeComplex(W), MakeComplex(Q)));
+    
+    OutputInverseTransformTexture[ThreadId.xy] = float4(H.Re, H.Im, 0, 0);
+    OutputInverseTransformTexture[ThreadId.xy] = float4(1, 1, 1, 1);
+}

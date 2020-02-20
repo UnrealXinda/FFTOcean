@@ -33,6 +33,21 @@ public:
 		FRHITexture* YDebugTextureRef,
 		FRHITexture* ZDebugTextureRef);
 
+	FORCEINLINE FTexture2DRHIRef GetSurfaceTexture(int Index) const
+	{
+		return OutputSurfaceTextures[Index];
+	}
+
+	FORCEINLINE FShaderResourceViewRHIRef GetSurfaceTextureSRV(int Index) const
+	{
+		return OutputSurfaceTexturesSRV[Index];
+	}
+
+	FORCEINLINE FUnorderedAccessViewRHIRef GetSurfaceTextureUAV(int Index) const
+	{
+		return OutputSurfaceTexturesUAV[Index];
+	}
+
 private:
 
 	FTexture2DRHIRef            OutputSurfaceTextures[3];
