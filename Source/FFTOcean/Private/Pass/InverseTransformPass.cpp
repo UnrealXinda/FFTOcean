@@ -27,6 +27,7 @@
 BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FInverseTransformComputeShaderParameters, )
 	SHADER_PARAMETER(int, Stage)
 	SHADER_PARAMETER(int, StageCount)
+	SHADER_PARAMETER(int, Direction)
 END_GLOBAL_SHADER_PARAMETER_STRUCT()
 IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FInverseTransformComputeShaderParameters, "InverseTransformUniform");
 
@@ -139,12 +140,12 @@ void FInverseTransformPass::ConfigurePass(const FInverseTransformPassConfig& InC
 	uint32 TextureWidth = InConfig.TextureWidth;
 	uint32 TextureHeight = InConfig.TextureHeight;
 	
-	OutputInverseTransformTexture = RHICreateTexture2D(TextureWidth, TextureHeight, PF_FloatRGBA, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
+	OutputInverseTransformTexture = RHICreateTexture2D(TextureWidth, TextureHeight, PF_G32R32F, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
 	OutputInverseTransformTextureUAV = RHICreateUnorderedAccessView(OutputInverseTransformTexture);
 	OutputInverseTransformTextureSRV = RHICreateShaderResourceView(OutputInverseTransformTexture, 0);
 }
 
-void FInverseTransformPass::Render(const FInverseTransformPassConfig& InConfig, const FInverseTransformPassParam& Param, UTextureRenderTarget2D* TargetTexture)
+void FInverseTransformPass::Render(const FInverseTransformPassConfig& InConfig, const FInverseTransformPassParam& Param, FRHITexture* DebugTextureRef)
 {
 	if (Config != InConfig)
 	{
@@ -155,7 +156,7 @@ void FInverseTransformPass::Render(const FInverseTransformPassConfig& InConfig, 
 	{
 		ENQUEUE_RENDER_COMMAND(InverseTransformPassCommand)
 		(
-			[Param, TargetTexture, this](FRHICommandListImmediate& RHICmdList)
+			[Param, DebugTextureRef, this](FRHICommandListImmediate& RHICmdList)
 			{
 				check(IsInRenderingThread());
 
@@ -192,6 +193,7 @@ void FInverseTransformPass::Render(const FInverseTransformPassConfig& InConfig, 
 						FInverseTransformComputeShader::FParameters UniformParam;
 						UniformParam.Stage = Stage;
 						UniformParam.StageCount = StageCount;
+						UniformParam.Direction = Direction;
 						InverseTransformComputeShader->SetShaderParameters(RHICmdList, UniformParam);
 
 						// Bind shader textures
@@ -212,12 +214,14 @@ void FInverseTransformPass::Render(const FInverseTransformPassConfig& InConfig, 
 					}
 				}
 
-				// TODO: pass in render target's RHI resources directly to avoid copy
-				if (TargetTexture)
+				// The final output ping pong texture is always the original input texture. So copy to output texture here.
+				// Alternatively, outside the pass, the renderer could reuse the input texture for next render pass. However,
+				// that is tightly coupled with the knowledge that the texture will be used right away.
+				RHICmdList.CopyToResolveTarget(Param.FourierComponentTexture, OutputInverseTransformTexture, FResolveParams());
+
+				if (DebugTextureRef)
 				{
-					FRHITexture* TargetTextureRef = FFTOcean::GetRHITextureFromRenderTarget(TargetTexture);
-					FTexture2DRHIRef OutputTexture = PingPongTextures[FrameIndex % 2];
-					RHICmdList.CopyToResolveTarget(OutputTexture, TargetTextureRef, FResolveParams());
+					RHICmdList.CopyToResolveTarget(OutputInverseTransformTexture, DebugTextureRef, FResolveParams());
 				}
 			}
 		);

@@ -93,6 +93,6 @@ void UProceduralOceanComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	float Timestamp = UGameplayStatics::GetRealTimeSeconds(GetWorld()) * RenderConfig.TimeMultiply;
+	float Timestamp = UGameplayStatics::GetRealTimeSeconds(GetWorld()) * RenderConfig.TimeMultiply + RenderConfig.StartTime;
 	OceanRenderer->Render(Timestamp, RenderConfig, DebugConfig);
 }

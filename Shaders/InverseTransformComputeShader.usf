@@ -1,9 +1,17 @@
 #include "/Engine/Private/Common.ush"
 #include "Common.ush"
 
-RWTexture2D<float4> OutputInverseTransformTexture;
+RWTexture2D<float2> OutputInverseTransformTexture;
+Texture2D<float2> InputFourierComponentTexture;
 Texture2D<float4> InputTwiddleFactorsTexture;
-Texture2D<float4> InputFourierComponentTexture;
+
+float2 ComplexMult(float2 A, float2 B)
+{
+    float2 C;
+    C.x = A.x * B.x - A.y * B.y;
+    C.y = A.x * B.y + A.y * B.x;
+    return C;
+}
 
 [numthreads(32, 32, 1)]
 void ComputeInverseTransform(uint3 ThreadId : SV_DispatchThreadID)
@@ -12,16 +20,33 @@ void ComputeInverseTransform(uint3 ThreadId : SV_DispatchThreadID)
     
     const int Stage      = InverseTransformUniform.Stage;
     const int StageCount = InverseTransformUniform.StageCount;
+    const int Direction  = InverseTransformUniform.Direction;
     
-    float SamplePosX = Stage / StageCount * TwiddleFactorsSize.x;
-    float4 TwiddleFactor = InputTwiddleFactorsTexture.Load(int3(SamplePosX, ThreadId.y, 0));
-    float2 P = InputFourierComponentTexture.Load(int3(ThreadId.x, TwiddleFactor.z, 0)).xy;
-    float2 Q = InputFourierComponentTexture.Load(int3(ThreadId.x, TwiddleFactor.w, 0)).xy;
-    float2 W = TwiddleFactor.xy;
+    int X = ThreadId.x;
+    int Y = ThreadId.y;
+        
+    [Branch]
+    // Horizontal
+    if (Direction == 0)
+    {
+        float4 TwiddleFactor = InputTwiddleFactorsTexture.Load(int3(Stage, X, 0));
+        float2 P = InputFourierComponentTexture.Load(int3(TwiddleFactor.z, Y, 0));
+        float2 Q = InputFourierComponentTexture.Load(int3(TwiddleFactor.w, Y, 0));
+        float2 W = TwiddleFactor.xy;
+        float2 H = P + ComplexMult(W, Q);
     
-    //Butterfly operation
-    Complex H = Add(MakeComplex(P), Mul(MakeComplex(W), MakeComplex(Q)));
+        OutputInverseTransformTexture[ThreadId.xy] = H;
+    }
     
-    OutputInverseTransformTexture[ThreadId.xy] = float4(H.Re, H.Im, 0, 0);
-    OutputInverseTransformTexture[ThreadId.xy] = float4(1, 1, 1, 1);
+    // Vertical
+    else
+    {
+        float4 TwiddleFactor = InputTwiddleFactorsTexture.Load(int3(Stage, Y, 0));
+        float2 P = InputFourierComponentTexture.Load(int3(X, TwiddleFactor.z, 0));
+        float2 Q = InputFourierComponentTexture.Load(int3(X, TwiddleFactor.w, 0));
+        float2 W = TwiddleFactor.xy;
+        float2 H = P + ComplexMult(W, Q);
+        
+        OutputInverseTransformTexture[ThreadId.xy] = H;
+    }
 }

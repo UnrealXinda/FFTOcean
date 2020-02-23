@@ -159,7 +159,7 @@ void FTwiddleFactorsPass::ConfigurePass(const FTwiddleFactorsPassConfig& InConfi
 	Config = InConfig;
 	
 	FRHIResourceCreateInfo CreateInfo;
-	uint32 TextureWidth = InConfig.TextureWidth;
+	uint32 TextureWidth = StaticCast<uint32>(FMath::Log2(InConfig.TextureWidth));
 	uint32 TextureHeight = InConfig.TextureHeight;
 	
 	OutputTwiddleFactorsTexture = RHICreateTexture2D(TextureWidth, TextureHeight, PF_FloatRGBA, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
@@ -173,7 +173,7 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 	if (Config != InConfig)
 	{
 		ConfigurePass(InConfig);
-	
+	}
 		if (IsValidPass())
 		{
 			ENQUEUE_RENDER_COMMAND(TwiddleFactorsPassCommand)
@@ -215,7 +215,7 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 					TwiddleFactorsComputeShader->SetShaderParameters(RHICmdList, UniformParam);
 
 					// Dispatch shader
-					const int ThreadGroupCountX = StaticCast<int>((uint32)FMath::Log2(Config.TextureHeight));
+					const int ThreadGroupCountX = StaticCast<int>(FMath::Log2(Config.TextureHeight));
 					const int ThreadGroupCountY = StaticCast<int>(Config.TextureHeight / 16);
 					DispatchComputeShader(RHICmdList, *TwiddleFactorsComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
 
@@ -233,6 +233,6 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 					SafeReleaseTextureResource(IndicesBufferRef);
 				}
 			);
-		}
+		//}
 	}
 }

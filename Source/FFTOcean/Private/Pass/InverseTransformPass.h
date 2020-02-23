@@ -29,7 +29,12 @@ public:
 	virtual bool IsValidPass() const override;
 	virtual void ReleaseRenderResource() override;
 
-	void Render(const FInverseTransformPassConfig& InConfig, const FInverseTransformPassParam& Param, UTextureRenderTarget2D* TargetTexture);
+	void Render(const FInverseTransformPassConfig& InConfig, const FInverseTransformPassParam& Param, FRHITexture* DebugTextureRef);
+
+	FORCEINLINE FShaderResourceViewRHIRef GetInverseTransformTextureSRV() const
+	{
+		return OutputInverseTransformTextureSRV;
+	}
 
 private:
 

@@ -7,6 +7,7 @@
 #include "Pass/FourierComponentPass.h"
 #include "Pass/TwiddleFactorsPass.h"
 #include "Pass/InverseTransformPass.h"
+#include "Pass/RenderToTargetPass.h"
 
 #include "FFTOceanRenderer.generated.h"
 
@@ -22,13 +23,19 @@ struct FOceanRenderConfig
 	int32 RenderTextureHeight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
+	float StartTime;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
 	float TimeMultiply;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
 	float WaveAmplitude;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector2D WindSpeed;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
+	float WindVelocity;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0, ClampMax = 360))
+	float WindDirection;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	class UTextureRenderTarget2D* DisplacementMapX;
@@ -60,6 +67,15 @@ struct FOceanDebugConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	class UTextureRenderTarget2D* TwiddleFactorsDebugTexture;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* TransformDebugTextureX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* TransformDebugTextureY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	class UTextureRenderTarget2D* TransformDebugTextureZ;
 };
 
 class FFFTOceanRenderer final
@@ -77,4 +93,5 @@ private:
 	TUniquePtr<FFourierComponentPass> FourierComponentPass;
 	TUniquePtr<FTwiddleFactorsPass>   TwiddleFactorsPass;
 	TUniquePtr<FInverseTransformPass> InverseTransformPass;
+	TUniquePtr<FRenderToTargetPass>   RenderToTargetPass;
 };

@@ -33,7 +33,7 @@ void ComputePhillipsFourier(uint3 ThreadId : SV_DispatchThreadID)
     float2 WindDirection = normalize(WindSpeed);
     float L_ = SQUARE(WindVelocity) / GRAVITY;
     
-    float2 K = TWO_PI * (ThreadId.xy - FourierTextureSize / 2) / L;
+    float2 K = TWO_PI * ThreadId.xy / L;
     float2 Kn = normalize(K);
     float2 KnMinus = normalize(-K);
     
@@ -51,5 +51,4 @@ void ComputePhillipsFourier(uint3 ThreadId : SV_DispatchThreadID)
     float4 GaussianRandom = float4(GaussianRand(UV, 0), GaussianRand(UV, 1), GaussianRand(UV, 2), GaussianRand(UV, 3));
     
     OutputPhillipsFourierTexture[ThreadId.xy] = float4(H0K * GaussianRandom.rg, H0MinusK * GaussianRandom.ba);
-
 }

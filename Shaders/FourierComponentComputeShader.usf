@@ -15,33 +15,33 @@ void ComputeFourierComponent(uint3 ThreadId : SV_DispatchThreadID)
     
     DECLARE_TEXTURE_SIZE_WITH_NAME(InputPhillipsFourierTexture, FourierTextureSize);
     
-    float2 K = TWO_PI * (ThreadId.xy - FourierTextureSize / 2) / L;
+    float2 K = TWO_PI * ThreadId.xy / L;
     float KNorm = max(length(K), 0.0001);
     
     float Omega = sqrt(GRAVITY * KNorm);
     
     float4 FourierTextureValue = InputPhillipsFourierTexture.Load(int3(ThreadId.xy, 0));
-    Complex H0K      = MakeComplex(FourierTextureValue.rg);
-    Complex H0MinusK = MakeComplex(FourierTextureValue.ba);
+    float H0K      = float2(FourierTextureValue.rg);
+    float H0MinusK = float2(FourierTextureValue.ba);
     
     float SinV, CosV;
     sincos(Omega * Time, SinV, CosV);
 
-    Complex ExpOmegaTime    = MakeComplex(CosV, SinV);  // exp(iwt)
-    Complex ExpOmegaTimeInv = Conj(ExpOmegaTime);       // exp(-iwt)
+    float2 ExpOmegaTime    = float2(CosV, SinV);  // exp(iwt)
+    float2 ExpOmegaTimeInv = float2(CosV, -SinV); // exp(-iwt) conjugate
     
     // dz: Vertical/Up displacement
-    Complex HKt_dz = Add(Mul(H0K, ExpOmegaTime), Mul(H0MinusK, ExpOmegaTimeInv));
+    float2 HKt_dz = H0K * ExpOmegaTime + H0MinusK * ExpOmegaTimeInv;
     
     // dx: Forward displacement
-    Complex dx = MakeComplex(K.x / KNorm, -K.x / KNorm);
-    Complex HKt_dx = Mul(HKt_dz, dx);
+    float2 dx = float2(K.x, -K.x) / KNorm;
+    float2 HKt_dx = HKt_dz * dx;
     
     // dy: Right displacement
-    Complex dy = MakeComplex(K.y / KNorm, -K.y / KNorm);
-    Complex HKt_dy = Mul(HKt_dz, dy);
+    float2 dy = float2(K.y, -K.y) / KNorm;
+    float2 HKt_dy = HKt_dz * dy;
     
-    OutputSurfaceTextureX[ThreadId.xy] = float2(HKt_dx.Re, HKt_dx.Im);
-    OutputSurfaceTextureY[ThreadId.xy] = float2(HKt_dy.Re, HKt_dy.Im);
-    OutputSurfaceTextureZ[ThreadId.xy] = float2(HKt_dz.Re, HKt_dz.Im);
+    OutputSurfaceTextureX[ThreadId.xy] = HKt_dx;
+    OutputSurfaceTextureY[ThreadId.xy] = HKt_dy;
+    OutputSurfaceTextureZ[ThreadId.xy] = HKt_dz;
 }

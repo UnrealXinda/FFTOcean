@@ -6,7 +6,8 @@ FFFTOceanRenderer::FFFTOceanRenderer() :
 	PhillipsFourierPass(new FPhillipsFourierPass()),
 	FourierComponentPass(new FFourierComponentPass()),
 	TwiddleFactorsPass(new FTwiddleFactorsPass()),
-	InverseTransformPass(new FInverseTransformPass())
+	InverseTransformPass(new FInverseTransformPass()),
+	RenderToTargetPass(new FRenderToTargetPass())
 {
 }
 
@@ -23,13 +24,15 @@ void FFFTOceanRenderer::Render(float Timestamp, const FOceanRenderConfig& Config
 		PassConfig.TextureWidth = Config.RenderTextureWidth;
 		PassConfig.TextureHeight = Config.RenderTextureHeight;
 
+		const FVector2D KWindDefaultDirection(1, 0);
+
 		FPhillipsFourierPassParam Param;
 		Param.WaveAmplitude = Config.WaveAmplitude;
-		Param.WindSpeed = Config.WindSpeed;
+		Param.WindSpeed = KWindDefaultDirection.GetRotated(Config.WindDirection) * Config.WindVelocity;
 
-		FRHITexture* DebugTexture = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.PhillipsFourierPassDebugTexture);
+		FRHITexture* DebugTextureRef = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.PhillipsFourierPassDebugTexture);
 
-		PhillipsFourierPass->Render(PassConfig, Param, DebugTexture);
+		PhillipsFourierPass->Render(PassConfig, Param, DebugTextureRef);
 	};
 
 	auto RenderFourierComponentPass = [Timestamp, &Config, &DebugConfig, this]()
@@ -42,11 +45,11 @@ void FFFTOceanRenderer::Render(float Timestamp, const FOceanRenderConfig& Config
 		Param.Time = Timestamp;
 		Param.PhillipsFourierTextureSRV = PhillipsFourierPass->GetPhillipsFourierTextureSRV();
 
-		FRHITexture* DebugTextureX = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.SurfaceDebugTextureX);
-		FRHITexture* DebugTextureY = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.SurfaceDebugTextureY);
-		FRHITexture* DebugTextureZ = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.SurfaceDebugTextureZ);
+		FRHITexture* DebugTextureXRef = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.SurfaceDebugTextureX);
+		FRHITexture* DebugTextureYRef = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.SurfaceDebugTextureY);
+		FRHITexture* DebugTextureZRef = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.SurfaceDebugTextureZ);
 
-		FourierComponentPass->Render(PassConfig, Param, DebugTextureX, DebugTextureY, DebugTextureZ);
+		FourierComponentPass->Render(PassConfig, Param, DebugTextureXRef, DebugTextureYRef, DebugTextureZRef);
 	};
 
 	auto RenderTwiddleFactorsPass = [&Config, &DebugConfig, this]()
@@ -57,12 +60,12 @@ void FFFTOceanRenderer::Render(float Timestamp, const FOceanRenderConfig& Config
 
 		FTwiddleFactorsPassParam Param;
 
-		FRHITexture* DebugTexture = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.TwiddleFactorsDebugTexture);
+		FRHITexture* DebugTextureRef = FFTOcean::GetRHITextureFromRenderTarget(DebugConfig.TwiddleFactorsDebugTexture);
 
-		TwiddleFactorsPass->Render(PassConfig, Param, DebugTexture);
+		TwiddleFactorsPass->Render(PassConfig, Param, DebugTextureRef);
 	};
 
-	auto RenderInverseTransformPass = [&Config, &DebugConfig, this](int32 Index, UTextureRenderTarget2D* TargetTexture)
+	auto RenderInverseTransformPass = [&Config, &DebugConfig, this](int32 Index, UTextureRenderTarget2D* DebugTexture)
 	{
 		FInverseTransformPassConfig PassConfig;
 		PassConfig.TextureWidth = Config.RenderTextureWidth;
@@ -74,13 +77,33 @@ void FFFTOceanRenderer::Render(float Timestamp, const FOceanRenderConfig& Config
 		Param.FourierComponentTextureUAV = FourierComponentPass->GetSurfaceTextureUAV(Index);
 		Param.TwiddleFactorsTextureSRV = TwiddleFactorsPass->GetTwiddleFactorsTextureSRV();
 
-		InverseTransformPass->Render(PassConfig, Param, TargetTexture);
+		FRHITexture* DebugTextureRef = FFTOcean::GetRHITextureFromRenderTarget(DebugTexture);
+
+		InverseTransformPass->Render(PassConfig, Param, DebugTextureRef);
+	};
+
+	auto RenderRenderToTargetPass = [&Config, &DebugConfig, this](UTextureRenderTarget2D* TargetTexture)
+	{
+		FRenderToTargetPassConfig PassConfig;
+		PassConfig.TextureWidth = Config.RenderTextureWidth;
+		PassConfig.TextureHeight = Config.RenderTextureHeight;
+
+		FRenderToTargetPassParam Param;
+		Param.InverseTransformTextureSRV = InverseTransformPass->GetInverseTransformTextureSRV();
+
+		RenderToTargetPass->Render(PassConfig, Param, TargetTexture);
 	};
 
 	RenderPhillipsFourierPass();
 	RenderFourierComponentPass();
 	RenderTwiddleFactorsPass();
-	RenderInverseTransformPass(0, Config.DisplacementMapX);
-	RenderInverseTransformPass(1, Config.DisplacementMapY);
-	RenderInverseTransformPass(2, Config.DisplacementMapZ);
+
+	RenderInverseTransformPass(0, DebugConfig.TransformDebugTextureX);
+	RenderRenderToTargetPass(Config.DisplacementMapX);
+
+	RenderInverseTransformPass(1, DebugConfig.TransformDebugTextureY);
+	RenderRenderToTargetPass(Config.DisplacementMapY);
+
+	RenderInverseTransformPass(2, DebugConfig.TransformDebugTextureZ);
+	RenderRenderToTargetPass(Config.DisplacementMapZ);
 }

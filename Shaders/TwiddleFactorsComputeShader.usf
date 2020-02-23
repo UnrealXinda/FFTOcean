@@ -4,36 +4,35 @@
 RWTexture2D<float4> OutputTwiddleFactorsTexture;
 RWStructuredBuffer<int> InputTwiddleIndicesBuffer;
 
-[numthreads(64, 16, 1)]
-void ComputeTwiddleFactors(uint3 ThreadId : SV_DispatchThreadID, uint3 GroupId : SV_GroupID)
+[numthreads(1, 64, 1)]
+void ComputeTwiddleFactors(uint3 ThreadId : SV_DispatchThreadID)
 {
     DECLARE_TEXTURE_SIZE_WITH_NAME(OutputTwiddleFactorsTexture, TextureSize);
     
     const int N = TextureSize.y;
     
-    int X = GroupId.x + 1; // Starting index on twiddle is 1
+    int X = ThreadId.x;
     int Y = ThreadId.y;
     
-    float K = fmod(Y * N / pow(2, X + 1), N);
+    float K = (Y * N / pow(2, X + 1)) % N;
     float Sin, Cos;
     sincos(TWO_PI * K / N, Sin, Cos);
     
-    Complex Twiddle = MakeComplex(Cos, Sin);	
-    int ButterflyWing = fmod(Y, pow(2, X + 1)) < pow(2, X); // 1 for top, 0 for bottom
+    int ButterflyWing = Y % pow(2, X + 1) < pow(2, X); // 1 for top, 0 for bottom
 
     [Branch]
-    if (GroupId.x == 0)
+    if (ThreadId.x == 0)
     {
         int IndexA = Y + ButterflyWing - 1;
         int IndexB = Y + ButterflyWing;
-        OutputTwiddleFactorsTexture[ThreadId.xy] = float4(Twiddle.Re, Twiddle.Im, InputTwiddleIndicesBuffer[IndexA], InputTwiddleIndicesBuffer[IndexB]);
+        OutputTwiddleFactorsTexture[ThreadId.xy] = float4(Cos, Sin, InputTwiddleIndicesBuffer[IndexA], InputTwiddleIndicesBuffer[IndexB]);
     }
     
     else
     {
         int ButterflySpan = pow(2, X);
-        int IndexA = Y + ButterflySpan * ButterflyWing - 1;
+        int IndexA = Y + ButterflySpan * (ButterflyWing - 1);
         int IndexB = Y + ButterflySpan * ButterflyWing;
-        OutputTwiddleFactorsTexture[ThreadId.xy] = float4(Twiddle.Re, Twiddle.Im, InputTwiddleIndicesBuffer[IndexA], InputTwiddleIndicesBuffer[IndexB]);
+        OutputTwiddleFactorsTexture[ThreadId.xy] = float4(Cos, Sin, IndexA, IndexB);
     }
 }
