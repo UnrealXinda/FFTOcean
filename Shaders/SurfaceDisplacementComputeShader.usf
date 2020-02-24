@@ -1,0 +1,21 @@
+#include "/Engine/Private/Common.ush"
+#include "Common.ush"
+
+RWTexture2D<float4> OutputDisplacementTexture;
+Texture2D<float2> InputDisplacementTextureX;
+Texture2D<float2> InputDisplacementTextureY;
+Texture2D<float2> InputDisplacementTextureZ;
+
+[numthreads(32, 32, 1)]
+void ComputeSurfaceDisplacement(uint3 ThreadId : SV_DispatchThreadID)
+{
+    DECLARE_TEXTURE_SIZE_WITH_NAME(InputDisplacementTextureX, TextureSizeX);
+    DECLARE_TEXTURE_SIZE_WITH_NAME(InputDisplacementTextureY, TextureSizeY);
+    DECLARE_TEXTURE_SIZE_WITH_NAME(InputDisplacementTextureZ, TextureSizeZ);
+    
+    float DisplacementX = InputDisplacementTextureX.Load(int3(ThreadId.xy, 0)).r / (TextureSizeX.x * TextureSizeX.y) * 10;
+    float DisplacementY = InputDisplacementTextureY.Load(int3(ThreadId.xy, 0)).r / (TextureSizeY.x * TextureSizeY.y) * 10;
+    float DisplacementZ = InputDisplacementTextureZ.Load(int3(ThreadId.xy, 0)).r / (TextureSizeZ.x * TextureSizeZ.y) * 10;
+    
+    OutputDisplacementTexture[ThreadId.xy] = float4(DisplacementX, DisplacementY, DisplacementZ, 1);
+}

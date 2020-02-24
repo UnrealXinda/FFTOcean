@@ -7,7 +7,8 @@
 #include "Pass/FourierComponentPass.h"
 #include "Pass/TwiddleFactorsPass.h"
 #include "Pass/InverseTransformPass.h"
-#include "Pass/RenderToTargetPass.h"
+#include "Pass/SurfaceDisplacementPass.h"
+#include "Pass/SurfaceNormalPass.h"
 
 #include "FFTOceanRenderer.generated.h"
 
@@ -37,14 +38,14 @@ struct FOceanRenderConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0, ClampMax = 360))
 	float WindDirection;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	class UTextureRenderTarget2D* DisplacementMapX;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0))
+	float NormalStrength;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	class UTextureRenderTarget2D* DisplacementMapY;
+	class UTextureRenderTarget2D* DisplacementMap;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	class UTextureRenderTarget2D* DisplacementMapZ;
+	class UTextureRenderTarget2D* NormalMap;
 };
 
 
@@ -89,9 +90,10 @@ public:
 
 private:
 
-	TUniquePtr<FPhillipsFourierPass>  PhillipsFourierPass;
-	TUniquePtr<FFourierComponentPass> FourierComponentPass;
-	TUniquePtr<FTwiddleFactorsPass>   TwiddleFactorsPass;
-	TUniquePtr<FInverseTransformPass> InverseTransformPass;
-	TUniquePtr<FRenderToTargetPass>   RenderToTargetPass;
+	TUniquePtr<FPhillipsFourierPass>     PhillipsFourierPass;
+	TUniquePtr<FFourierComponentPass>    FourierComponentPass;
+	TUniquePtr<FTwiddleFactorsPass>      TwiddleFactorsPass;
+	TUniquePtr<FInverseTransformPass>    InverseTransformPass;
+	TUniquePtr<FSurfaceDisplacementPass> SurfaceDisplacementPass;
+	TUniquePtr<FSurfaceNormalPass>       SurfaceNormalPass;
 };

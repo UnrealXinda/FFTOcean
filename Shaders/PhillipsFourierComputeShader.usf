@@ -29,9 +29,8 @@ void ComputePhillipsFourier(uint3 ThreadId : SV_DispatchThreadID)
     DECLARE_TEXTURE_SIZE_WITH_NAME(OutputPhillipsFourierTexture, FourierTextureSize)    
     OutputPhillipsFourierTexture.GetDimensions(FourierTextureSize.x, FourierTextureSize.y);
     
-    float WindVelocity = length(WindSpeed);
     float2 WindDirection = normalize(WindSpeed);
-    float L_ = SQUARE(WindVelocity) / GRAVITY;
+    float L_ = dot(WindSpeed, WindSpeed) / GRAVITY;
     
     float2 K = TWO_PI * ThreadId.xy / L;
     float2 Kn = normalize(K);

@@ -1,7 +1,5 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#pragma once
-
 #include "Pass/PhillipsFourierPass.h"
 #include "RenderCore/Public/GlobalShader.h"
 #include "RenderCore/Public/ShaderParameterUtils.h"

@@ -1,7 +1,5 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#pragma once
-
 #include "Pass/TwiddleFactorsPass.h"
 #include "RenderCore/Public/GlobalShader.h"
 #include "RenderCore/Public/ShaderParameterUtils.h"
@@ -173,7 +171,7 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 	if (Config != InConfig)
 	{
 		ConfigurePass(InConfig);
-	}
+	
 		if (IsValidPass())
 		{
 			ENQUEUE_RENDER_COMMAND(TwiddleFactorsPassCommand)
@@ -233,6 +231,6 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 					SafeReleaseTextureResource(IndicesBufferRef);
 				}
 			);
-		//}
+		}
 	}
 }

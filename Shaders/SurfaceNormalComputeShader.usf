@@ -1,0 +1,35 @@
+#include "/Engine/Private/Common.ush"
+#include "Common.ush"
+
+RWTexture2D<float4> OutputNormalTexture;
+Texture2D<float4> InputDisplacementTexture;
+
+float GetHeight(Texture2D<float4> HeightMap, int2 HeightMapSize, int2 Location)
+{
+    int2 SampleLoc = clamp(Location, int2(0, 0), HeightMapSize);
+    return HeightMap.Load(int3(SampleLoc, 0)).b;
+}
+
+// Sobel-filter
+[numthreads(32, 32, 1)]
+void ComputeSurfaceNormal(uint3 ThreadId : SV_DispatchThreadID)
+{
+    DECLARE_TEXTURE_SIZE_WITH_NAME(InputDisplacementTexture, DisplacementTextureSize);
+    
+    const float NormalStrength = SurfaceNormalUniform.NormalStrength;
+    
+    float     TopLeft = GetHeight(InputDisplacementTexture, DisplacementTextureSize, ThreadId.xy + int2(-1, -1));
+    float        Left = GetHeight(InputDisplacementTexture, DisplacementTextureSize, ThreadId.xy + int2(-1, 0));
+    float  BottomLeft = GetHeight(InputDisplacementTexture, DisplacementTextureSize, ThreadId.xy + int2(-1, 1));
+    float         Top = GetHeight(InputDisplacementTexture, DisplacementTextureSize, ThreadId.xy + int2(0, -1));
+    float      Bottom = GetHeight(InputDisplacementTexture, DisplacementTextureSize, ThreadId.xy + int2(0, 1));
+    float    TopRight = GetHeight(InputDisplacementTexture, DisplacementTextureSize, ThreadId.xy + int2(1, -1));
+    float       Right = GetHeight(InputDisplacementTexture, DisplacementTextureSize, ThreadId.xy + int2(1, 0));
+    float BottomRight = GetHeight(InputDisplacementTexture, DisplacementTextureSize, ThreadId.xy + int2(1, 1));
+    
+    float dX = (TopRight + 2.0 * Right + BottomRight) - (TopLeft + 2.0 * Left + BottomLeft);
+    float dY = (BottomLeft + 2.0 * Bottom + BottomRight) - (TopLeft + 2.0 * Top + TopRight);
+    float dZ = rcp(NormalStrength);
+    
+    OutputNormalTexture[ThreadId.xy] = float4(normalize(float3(dX, dY, dZ)), 1);
+}

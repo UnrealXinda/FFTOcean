@@ -12,9 +12,9 @@ struct FInverseTransformPassConfig
 
 struct FInverseTransformPassParam
 {
-	FTexture2DRHIRef           FourierComponentTexture;
-	FShaderResourceViewRHIRef  FourierComponentTextureSRV;
-	FUnorderedAccessViewRHIRef FourierComponentTextureUAV;
+	FTexture2DRHIRef           FourierComponentTextures[3];
+	FShaderResourceViewRHIRef  FourierComponentTextureSRVs[3];
+	FUnorderedAccessViewRHIRef FourierComponentTextureUAVs[3];
 
 	FShaderResourceViewRHIRef  TwiddleFactorsTextureSRV;
 };
@@ -29,20 +29,34 @@ public:
 	virtual bool IsValidPass() const override;
 	virtual void ReleaseRenderResource() override;
 
-	void Render(const FInverseTransformPassConfig& InConfig, const FInverseTransformPassParam& Param, FRHITexture* DebugTextureRef);
+	void Render(
+		const FInverseTransformPassConfig& InConfig,
+		const FInverseTransformPassParam& Param,
+		FRHITexture* XDebugTextureRef,
+		FRHITexture* YDebugTextureRef,
+		FRHITexture* ZDebugTextureRef);
 
-	FORCEINLINE FShaderResourceViewRHIRef GetInverseTransformTextureSRV() const
+	FORCEINLINE void GetInverseTransformTextureSRVs(FShaderResourceViewRHIRef (&Array)[3]) const
 	{
-		return OutputInverseTransformTextureSRV;
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			Array[Index] = OutputInverseTransformTextureSRVs[Index];
+		}
 	}
 
 private:
 
-	FTexture2DRHIRef           OutputInverseTransformTexture;
-	FUnorderedAccessViewRHIRef OutputInverseTransformTextureUAV;
-	FShaderResourceViewRHIRef  OutputInverseTransformTextureSRV;
+	FTexture2DRHIRef           OutputInverseTransformTextures[3];
+	FUnorderedAccessViewRHIRef OutputInverseTransformTextureUAVs[3];
+	FShaderResourceViewRHIRef  OutputInverseTransformTextureSRVs[3];
 
 	FInverseTransformPassConfig Config;
 
 	void ConfigurePass(const FInverseTransformPassConfig& InConfig);
+
+	void RenderInverseTransform(
+		FRHICommandListImmediate& RHICmdList,
+		const FInverseTransformPassParam& Param,
+		int32 TextureIndex,
+		FRHITexture* DebugTextureRef);
 };

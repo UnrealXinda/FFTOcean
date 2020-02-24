@@ -6,6 +6,9 @@
 #include "UObject/ObjectMacros.h"
 #include "RHI/Public/RHIResources.h"
 #include "RHI/Public/RHICommandList.h"
+#include "RenderCore/Public/GlobalShader.h"
+#include "RenderCore/Public/ShaderParameterUtils.h"
+#include "RenderCore/Public/ShaderParameterMacros.h"
 #include "Engine/Classes/Engine/TextureRenderTarget2D.h"
 
 #define SafeReleaseTextureResource(Texture)  \
