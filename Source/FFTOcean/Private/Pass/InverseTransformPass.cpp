@@ -54,16 +54,9 @@ public:
 		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
 	}
 
-	virtual bool Serialize(FArchive& Ar) override
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << OutputInverseTransformTexture << InputTwiddleFactorsTexture << InputFourierComponentTexture;
-		return bShaderHasOutdatedParameters;
-	}
-
 	void BindShaderTextures(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef OutputTextureUAV, FShaderResourceViewRHIRef InputTwiddleFactorsTextureSRV, FShaderResourceViewRHIRef InputFourierComponentTextureSRV)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputInverseTransformTexture, OutputTextureUAV);
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputTwiddleFactorsTexture, InputTwiddleFactorsTextureSRV);
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputFourierComponentTexture, InputFourierComponentTextureSRV);		
@@ -71,7 +64,7 @@ public:
 
 	void UnbindShaderTextures(FRHICommandList& RHICmdList)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputInverseTransformTexture, FUnorderedAccessViewRHIRef());
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputTwiddleFactorsTexture, FShaderResourceViewRHIRef());
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputFourierComponentTexture, FShaderResourceViewRHIRef());
@@ -79,15 +72,15 @@ public:
 
 	void SetShaderParameters(FRHICommandList& RHICmdList, const FParameters& Parameters)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUniformBufferParameterImmediate(RHICmdList, ComputeShaderRHI, GetUniformBufferParameter<FParameters>(), Parameters);
 	}
 
 private:
 
-	FShaderResourceParameter OutputInverseTransformTexture;
-	FShaderResourceParameter InputTwiddleFactorsTexture;
-	FShaderResourceParameter InputFourierComponentTexture;
+	LAYOUT_FIELD(FShaderResourceParameter, OutputInverseTransformTexture);
+	LAYOUT_FIELD(FShaderResourceParameter, InputTwiddleFactorsTexture);
+	LAYOUT_FIELD(FShaderResourceParameter, InputFourierComponentTexture);
 };
 
 IMPLEMENT_SHADER_TYPE(, FInverseTransformComputeShader, TEXT("/Plugin/FFTOcean/InverseTransformComputeShader.usf"), TEXT("ComputeInverseTransform"), SF_Compute);
@@ -113,9 +106,9 @@ FInverseTransformPass::~FInverseTransformPass()
 
 bool FInverseTransformPass::IsValidPass() const
 {
-	bool bValid = !!OutputInverseTransformTextures;
-	bValid &= !!OutputInverseTransformTextureUAVs;
-	bValid &= !!OutputInverseTransformTextureSRVs;
+	bool bValid = !!OutputInverseTransformTextures
+		&& !!OutputInverseTransformTextureUAVs
+		&& !!OutputInverseTransformTextureSRVs;
 
 	return bValid;
 }
@@ -193,7 +186,7 @@ void FInverseTransformPass::RenderInverseTransform(
 {
 	// Set up compute shader
 	TShaderMapRef<FInverseTransformComputeShader> InverseTransformComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-	RHICmdList.SetComputeShader(InverseTransformComputeShader->GetComputeShader());
+	RHICmdList.SetComputeShader(InverseTransformComputeShader.GetComputeShader());
 
 	// Set up ping pong texture
 	FTexture2DRHIRef           PingPongTextures[2];
@@ -235,7 +228,7 @@ void FInverseTransformPass::RenderInverseTransform(
 			// Dispatch shader
 			const int ThreadGroupCountX = StaticCast<int>(Config.TextureWidth / 32);
 			const int ThreadGroupCountY = StaticCast<int>(Config.TextureHeight / 32);
-			DispatchComputeShader(RHICmdList, *InverseTransformComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
+			DispatchComputeShader(RHICmdList, InverseTransformComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
 
 			// Unbind shader textures
 			InverseTransformComputeShader->UnbindShaderTextures(RHICmdList);

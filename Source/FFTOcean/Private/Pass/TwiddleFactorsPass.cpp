@@ -49,40 +49,33 @@ public:
 		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
 	}
 
-	virtual bool Serialize(FArchive& Ar) override
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << OutputTwiddleFactorsTexture << InputTwiddleIndicesBuffer;
-		return bShaderHasOutdatedParameters;
-	}
-
 	void BindShaderTextures(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef OutputTextureUAV, FUnorderedAccessViewRHIRef InputIndicesBufferUAV)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputTwiddleFactorsTexture, OutputTextureUAV);
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, InputTwiddleIndicesBuffer, InputIndicesBufferUAV);
 	}
 
 	void UnbindShaderTextures(FRHICommandList& RHICmdList)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputTwiddleFactorsTexture, FUnorderedAccessViewRHIRef());
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, InputTwiddleIndicesBuffer, FUnorderedAccessViewRHIRef());
 	}
 
 	void SetShaderParameters(FRHICommandList& RHICmdList, const FParameters& Parameters)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUniformBufferParameterImmediate(RHICmdList, ComputeShaderRHI, GetUniformBufferParameter<FParameters>(), Parameters);
 	}
 
 private:
 
-	FShaderResourceParameter OutputTwiddleFactorsTexture;
-	FShaderResourceParameter InputTwiddleIndicesBuffer;
+	LAYOUT_FIELD(FShaderResourceParameter, OutputTwiddleFactorsTexture);
+	LAYOUT_FIELD(FShaderResourceParameter, InputTwiddleIndicesBuffer);
 };
 
-IMPLEMENT_SHADER_TYPE(, FTwiddleFactorsComputeShader, TEXT("/Plugin/FFTOcean/TwiddleFactorsComputeShader.usf"), TEXT("ComputeTwiddleFactors"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FTwiddleFactorsComputeShader, "/Plugin/FFTOcean/TwiddleFactorsComputeShader.usf", "ComputeTwiddleFactors", SF_Compute);
 
 inline bool operator==(const FTwiddleFactorsPassConfig& A, const FTwiddleFactorsPassConfig& B)
 {
@@ -135,9 +128,9 @@ FTwiddleFactorsPass::~FTwiddleFactorsPass()
 
 bool FTwiddleFactorsPass::IsValidPass() const
 {
-	bool bValid = !!OutputTwiddleFactorsTexture;
-	bValid &= !!OutputTwiddleFactorsTextureUAV;
-	bValid &= !!OutputTwiddleFactorsTextureSRV;
+	bool bValid = !!OutputTwiddleFactorsTexture
+		&& !!OutputTwiddleFactorsTextureUAV
+		&& !!OutputTwiddleFactorsTextureSRV;
 
 	return bValid;
 }
@@ -203,7 +196,7 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 
 					// Set up compute shader
 					TShaderMapRef<FTwiddleFactorsComputeShader> TwiddleFactorsComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-					RHICmdList.SetComputeShader(TwiddleFactorsComputeShader->GetComputeShader());
+					RHICmdList.SetComputeShader(TwiddleFactorsComputeShader.GetComputeShader());
 
 					// Bind shader textures
 					TwiddleFactorsComputeShader->BindShaderTextures(RHICmdList, OutputTwiddleFactorsTextureUAV, IndicesBufferUAVRef);
@@ -215,7 +208,7 @@ void FTwiddleFactorsPass::Render(const FTwiddleFactorsPassConfig& InConfig, cons
 					// Dispatch shader
 					const int ThreadGroupCountX = StaticCast<int>(FMath::Log2(Config.TextureHeight));
 					const int ThreadGroupCountY = StaticCast<int>(Config.TextureHeight / 16);
-					DispatchComputeShader(RHICmdList, *TwiddleFactorsComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
+					DispatchComputeShader(RHICmdList, TwiddleFactorsComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
 
 					// Unbind shader textures
 					TwiddleFactorsComputeShader->UnbindShaderTextures(RHICmdList);

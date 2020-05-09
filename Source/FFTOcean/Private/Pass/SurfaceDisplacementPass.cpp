@@ -47,18 +47,6 @@ public:
 		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
 	}
 
-	virtual bool Serialize(FArchive& Ar) override
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-
-		Ar << OutputDisplacementTexture;
-		Ar << InputDisplacementTextureX;
-		Ar << InputDisplacementTextureY;
-		Ar << InputDisplacementTextureZ;
-
-		return bShaderHasOutdatedParameters;
-	}
-
 	void BindShaderTextures(
 		FRHICommandList& RHICmdList,
 		FUnorderedAccessViewRHIRef OutputTextureUAV,
@@ -66,7 +54,7 @@ public:
 		FShaderResourceViewRHIRef YInputTextureSRV,
 		FShaderResourceViewRHIRef ZInputTextureSRV)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputDisplacementTexture, OutputTextureUAV);
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputDisplacementTextureX, XInputTextureSRV);
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputDisplacementTextureY, YInputTextureSRV);
@@ -75,7 +63,7 @@ public:
 
 	void UnbindShaderTextures(FRHICommandList& RHICmdList)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputDisplacementTexture, FUnorderedAccessViewRHIRef());
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputDisplacementTextureX, FShaderResourceViewRHIRef());
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputDisplacementTextureY, FShaderResourceViewRHIRef());
@@ -84,13 +72,13 @@ public:
 
 private:
 
-	FShaderResourceParameter OutputDisplacementTexture;
-	FShaderResourceParameter InputDisplacementTextureX;
-	FShaderResourceParameter InputDisplacementTextureY;
-	FShaderResourceParameter InputDisplacementTextureZ;
+	LAYOUT_FIELD(FShaderResourceParameter, OutputDisplacementTexture);
+	LAYOUT_FIELD(FShaderResourceParameter, InputDisplacementTextureX);
+	LAYOUT_FIELD(FShaderResourceParameter, InputDisplacementTextureY);
+	LAYOUT_FIELD(FShaderResourceParameter, InputDisplacementTextureZ);
 };
 
-IMPLEMENT_SHADER_TYPE(, FSurfaceDisplacementComputeShader,  TEXT("/Plugin/FFTOcean/SurfaceDisplacementComputeShader.usf"), TEXT("ComputeSurfaceDisplacement"), SF_Compute)
+IMPLEMENT_GLOBAL_SHADER(FSurfaceDisplacementComputeShader, "/Plugin/FFTOcean/SurfaceDisplacementComputeShader.usf", "ComputeSurfaceDisplacement", SF_Compute)
 
 inline bool operator==(const FSurfaceDisplacementPassConfig& A, const FSurfaceDisplacementPassConfig& B)
 {
@@ -114,9 +102,9 @@ FSurfaceDisplacementPass::~FSurfaceDisplacementPass()
 
 bool FSurfaceDisplacementPass::IsValidPass() const
 {
-	bool bValid = !!OutputSurfaceDisplacementTexture;
-	bValid &= !!OutputSurfaceDisplacementTextureSRV;
-	bValid &= !!OutputSurfaceDisplacementTextureUAV;
+	bool bValid = !!OutputSurfaceDisplacementTexture
+		&& !!OutputSurfaceDisplacementTextureSRV
+		&& !!OutputSurfaceDisplacementTextureUAV;
 
 	return bValid;
 }
@@ -144,7 +132,7 @@ void FSurfaceDisplacementPass::Render(const FSurfaceDisplacementPassConfig& InCo
 				check(IsInRenderingThread());
 
 				TShaderMapRef<FSurfaceDisplacementComputeShader> SurfaceDisplacementComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-				RHICmdList.SetComputeShader(SurfaceDisplacementComputeShader->GetComputeShader());
+				RHICmdList.SetComputeShader(SurfaceDisplacementComputeShader.GetComputeShader());
 
 				// Bind shader textures
 				SurfaceDisplacementComputeShader->BindShaderTextures(
@@ -157,7 +145,7 @@ void FSurfaceDisplacementPass::Render(const FSurfaceDisplacementPassConfig& InCo
 				// Dispatch shader
 				const int ThreadGroupCountX = StaticCast<int>(Config.TextureWidth / 32);
 				const int ThreadGroupCountY = StaticCast<int>(Config.TextureHeight / 32);
-				DispatchComputeShader(RHICmdList, *SurfaceDisplacementComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
+				DispatchComputeShader(RHICmdList, SurfaceDisplacementComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
 
 				// Unbind shader textures
 				SurfaceDisplacementComputeShader->UnbindShaderTextures(RHICmdList);
@@ -180,10 +168,10 @@ void FSurfaceDisplacementPass::ConfigurePass(const FSurfaceDisplacementPassConfi
 	Config = InConfig;
 
 	FRHIResourceCreateInfo CreateInfo;
-	uint32 TextureWidth = InConfig.TextureWidth;
+	uint32 TextureWidth  = InConfig.TextureWidth;
 	uint32 TextureHeight = InConfig.TextureHeight;
 
-	OutputSurfaceDisplacementTexture = RHICreateTexture2D(TextureWidth, TextureHeight, PF_FloatRGBA, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
+	OutputSurfaceDisplacementTexture    = RHICreateTexture2D(TextureWidth, TextureHeight, PF_FloatRGBA, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
 	OutputSurfaceDisplacementTextureUAV = RHICreateUnorderedAccessView(OutputSurfaceDisplacementTexture);
 	OutputSurfaceDisplacementTextureSRV = RHICreateShaderResourceView(OutputSurfaceDisplacementTexture, 0);
 }

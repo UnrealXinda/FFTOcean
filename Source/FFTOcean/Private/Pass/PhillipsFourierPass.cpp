@@ -50,39 +50,30 @@ public:
 		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
 	}
 
-	virtual bool Serialize(FArchive& Ar) override
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << OutputPhillipsFourierTexture;
-		return bShaderHasOutdatedParameters;
-	}
-
 	void BindShaderTextures(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef OutputTextureUAV)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
-
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputPhillipsFourierTexture, OutputTextureUAV);
 	}
 
 	void UnbindShaderTextures(FRHICommandList& RHICmdList)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
-
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputPhillipsFourierTexture, FUnorderedAccessViewRHIRef());
 	}
 
 	void SetShaderParameters(FRHICommandList& RHICmdList, const FParameters& Parameters)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUniformBufferParameterImmediate(RHICmdList, ComputeShaderRHI, GetUniformBufferParameter<FParameters>(), Parameters);
 	}
 
 private:
 
-	FShaderResourceParameter OutputPhillipsFourierTexture;
+	LAYOUT_FIELD(FShaderResourceParameter, OutputPhillipsFourierTexture);
 };
 
-IMPLEMENT_SHADER_TYPE(, FPhillipsFourierComputeShader, TEXT("/Plugin/FFTOcean/PhillipsFourierComputeShader.usf"), TEXT("ComputePhillipsFourier"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FPhillipsFourierComputeShader, "/Plugin/FFTOcean/PhillipsFourierComputeShader.usf", "ComputePhillipsFourier", SF_Compute);
 
 inline bool operator==(const FPhillipsFourierPassConfig& A, const FPhillipsFourierPassConfig& B)
 {
@@ -105,9 +96,9 @@ FPhillipsFourierPass::~FPhillipsFourierPass()
 
 bool FPhillipsFourierPass::IsValidPass() const
 {
-	bool bValid = !!OutputPhillipsFourierTexture;
-	bValid &= !!OutputPhillipsFourierTextureUAV;
-	bValid &= !!OutputPhillipsFourierTextureSRV;
+	bool bValid = !!OutputPhillipsFourierTexture
+		&& !!OutputPhillipsFourierTextureUAV
+		&& !!OutputPhillipsFourierTextureSRV;
 
 	return bValid;
 }
@@ -151,7 +142,7 @@ void FPhillipsFourierPass::Render(const FPhillipsFourierPassConfig& InConfig, co
 				check(IsInRenderingThread());
 
 				TShaderMapRef<FPhillipsFourierComputeShader> PhillipsFourierComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-				RHICmdList.SetComputeShader(PhillipsFourierComputeShader->GetComputeShader());
+				RHICmdList.SetComputeShader(PhillipsFourierComputeShader.GetComputeShader());
 
 				// Bind shader textures
 				PhillipsFourierComputeShader->BindShaderTextures(RHICmdList, OutputPhillipsFourierTextureUAV);
@@ -165,7 +156,7 @@ void FPhillipsFourierPass::Render(const FPhillipsFourierPassConfig& InConfig, co
 				// Dispatch shader
 				const int ThreadGroupCountX = StaticCast<int>(Config.TextureWidth / 32);
 				const int ThreadGroupCountY = StaticCast<int>(Config.TextureHeight / 32);
-				DispatchComputeShader(RHICmdList, *PhillipsFourierComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
+				DispatchComputeShader(RHICmdList, PhillipsFourierComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
 
 				// Unbind shader textures
 				PhillipsFourierComputeShader->UnbindShaderTextures(RHICmdList);

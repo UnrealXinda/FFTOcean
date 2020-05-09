@@ -56,13 +56,6 @@ public:
 		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
 	}
 
-	virtual bool Serialize(FArchive& Ar) override
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << OutputSurfaceTextureX << OutputSurfaceTextureY << OutputSurfaceTextureZ << InputPhillipsFourierTexture;
-		return bShaderHasOutdatedParameters;
-	}
-
 	void BindShaderTextures(
 		FRHICommandList& RHICmdList,
 		FUnorderedAccessViewRHIRef OutputTextureXUAV,
@@ -70,7 +63,7 @@ public:
 		FUnorderedAccessViewRHIRef OutputTextureZUAV,
 		FShaderResourceViewRHIRef InputTextureSRV)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputSurfaceTextureX, OutputTextureXUAV);
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputSurfaceTextureY, OutputTextureYUAV);
@@ -80,7 +73,7 @@ public:
 
 	void UnbindShaderTextures(FRHICommandList& RHICmdList)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputSurfaceTextureX, FUnorderedAccessViewRHIRef());
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputSurfaceTextureY, FUnorderedAccessViewRHIRef());
@@ -90,19 +83,19 @@ public:
 
 	void SetShaderParameters(FRHICommandList& RHICmdList, const FParameters& Parameters)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUniformBufferParameterImmediate(RHICmdList, ComputeShaderRHI, GetUniformBufferParameter<FParameters>(), Parameters);
 	}
 
 private:
 
-	FShaderResourceParameter OutputSurfaceTextureX;
-	FShaderResourceParameter OutputSurfaceTextureY;
-	FShaderResourceParameter OutputSurfaceTextureZ;
-	FShaderResourceParameter InputPhillipsFourierTexture;
+	LAYOUT_FIELD(FShaderResourceParameter, OutputSurfaceTextureX);
+	LAYOUT_FIELD(FShaderResourceParameter, OutputSurfaceTextureY);
+	LAYOUT_FIELD(FShaderResourceParameter, OutputSurfaceTextureZ);
+	LAYOUT_FIELD(FShaderResourceParameter, InputPhillipsFourierTexture);
 };
 
-IMPLEMENT_SHADER_TYPE(, FFourierComponentComputeShader, TEXT("/Plugin/FFTOcean/FourierComponentComputeShader.usf"), TEXT("ComputeFourierComponent"), SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FFourierComponentComputeShader, "/Plugin/FFTOcean/FourierComponentComputeShader.usf", "ComputeFourierComponent", SF_Compute);
 
 inline bool operator==(const FFourierComponentPassConfig& A, const FFourierComponentPassConfig& B)
 {
@@ -203,7 +196,7 @@ void FFourierComponentPass::Render(
 				check(IsInRenderingThread());
 
 				TShaderMapRef<FFourierComponentComputeShader> FourierComponentComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-				RHICmdList.SetComputeShader(FourierComponentComputeShader->GetComputeShader());
+				RHICmdList.SetComputeShader(FourierComponentComputeShader.GetComputeShader());
 
 				// Bind shader textures
 				FourierComponentComputeShader->BindShaderTextures(
@@ -221,7 +214,7 @@ void FFourierComponentPass::Render(
 				// Dispatch shader
 				const int ThreadGroupCountX = StaticCast<int>(Config.TextureWidth / 32);
 				const int ThreadGroupCountY = StaticCast<int>(Config.TextureHeight / 32);
-				DispatchComputeShader(RHICmdList, *FourierComponentComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
+				DispatchComputeShader(RHICmdList, FourierComponentComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
 
 				// Unbind shader textures
 				FourierComponentComputeShader->UnbindShaderTextures(RHICmdList);

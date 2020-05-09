@@ -51,43 +51,33 @@ public:
 		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
 	}
 
-	virtual bool Serialize(FArchive& Ar) override
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-
-		Ar << OutputNormalTexture;
-		Ar << InputDisplacementTexture;
-
-		return bShaderHasOutdatedParameters;
-	}
-
 	void BindShaderTextures(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIRef OutputTextureUAV, FShaderResourceViewRHIRef InputTextureSRV)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputNormalTexture, OutputTextureUAV);
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputDisplacementTexture, InputTextureSRV);
 	}
 
 	void UnbindShaderTextures(FRHICommandList& RHICmdList)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUAVParameter(RHICmdList, ComputeShaderRHI, OutputNormalTexture, FUnorderedAccessViewRHIRef());
 		SetSRVParameter(RHICmdList, ComputeShaderRHI, InputDisplacementTexture, FShaderResourceViewRHIRef());
 	}
 
 	void SetShaderParameters(FRHICommandList& RHICmdList, const FParameters& Parameters)
 	{
-		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
 		SetUniformBufferParameterImmediate(RHICmdList, ComputeShaderRHI, GetUniformBufferParameter<FParameters>(), Parameters);
 	}
 
 private:
 
-	FShaderResourceParameter OutputNormalTexture;
-	FShaderResourceParameter InputDisplacementTexture;
+	LAYOUT_FIELD(FShaderResourceParameter, OutputNormalTexture);
+	LAYOUT_FIELD(FShaderResourceParameter, InputDisplacementTexture);
 };
 
-IMPLEMENT_SHADER_TYPE(, FSurfaceNormalComputeShader,  TEXT("/Plugin/FFTOcean/SurfaceNormalComputeShader.usf"), TEXT("ComputeSurfaceNormal"), SF_Compute)
+IMPLEMENT_GLOBAL_SHADER(FSurfaceNormalComputeShader, "/Plugin/FFTOcean/SurfaceNormalComputeShader.usf", "ComputeSurfaceNormal", SF_Compute)
 
 inline bool operator==(const FSurfaceNormalPassConfig& A, const FSurfaceNormalPassConfig& B)
 {
@@ -111,9 +101,9 @@ FSurfaceNormalPass::~FSurfaceNormalPass()
 
 bool FSurfaceNormalPass::IsValidPass() const
 {
-	bool bValid = !!OutputSurfaceNormalTexture;
-	bValid &= !!OutputSurfaceNormalTextureSRV;
-	bValid &= !!OutputSurfaceNormalTextureUAV;
+	bool bValid = !!OutputSurfaceNormalTexture
+		&& !!OutputSurfaceNormalTextureSRV
+		&& !!OutputSurfaceNormalTextureUAV;
 
 	return bValid;
 }
@@ -142,7 +132,7 @@ void FSurfaceNormalPass::Render(const FSurfaceNormalPassConfig& InConfig, const 
 
 				// Set up compute shader
 				TShaderMapRef<FSurfaceNormalComputeShader> SurfaceNormalComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-				RHICmdList.SetComputeShader(SurfaceNormalComputeShader->GetComputeShader());
+				RHICmdList.SetComputeShader(SurfaceNormalComputeShader.GetComputeShader());
 
 				// Bind shader textures
 				SurfaceNormalComputeShader->BindShaderTextures(RHICmdList, OutputSurfaceNormalTextureUAV, Param.DisplacementTextureSRV);
@@ -155,7 +145,7 @@ void FSurfaceNormalPass::Render(const FSurfaceNormalPassConfig& InConfig, const 
 				// Dispatch shader
 				const int ThreadGroupCountX = StaticCast<int>(Config.TextureWidth / 32);
 				const int ThreadGroupCountY = StaticCast<int>(Config.TextureHeight / 32);
-				DispatchComputeShader(RHICmdList, *SurfaceNormalComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
+				DispatchComputeShader(RHICmdList, SurfaceNormalComputeShader, ThreadGroupCountX, ThreadGroupCountY, 1);
 
 				// Unbind shader textures
 				SurfaceNormalComputeShader->UnbindShaderTextures(RHICmdList);
@@ -178,10 +168,10 @@ void FSurfaceNormalPass::ConfigurePass(const FSurfaceNormalPassConfig& InConfig)
 	Config = InConfig;
 
 	FRHIResourceCreateInfo CreateInfo;
-	uint32 TextureWidth = InConfig.TextureWidth;
+	uint32 TextureWidth  = InConfig.TextureWidth;
 	uint32 TextureHeight = InConfig.TextureHeight;
 
-	OutputSurfaceNormalTexture = RHICreateTexture2D(TextureWidth, TextureHeight, PF_FloatRGBA, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
+	OutputSurfaceNormalTexture    = RHICreateTexture2D(TextureWidth, TextureHeight, PF_FloatRGBA, 1, 1, TexCreate_ShaderResource | TexCreate_UAV, CreateInfo);
 	OutputSurfaceNormalTextureUAV = RHICreateUnorderedAccessView(OutputSurfaceNormalTexture);
 	OutputSurfaceNormalTextureSRV = RHICreateShaderResourceView(OutputSurfaceNormalTexture, 0);
 }
